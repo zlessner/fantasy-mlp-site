@@ -2217,8 +2217,14 @@ function poPlayerCard(name, mlpName){
       if(!g.db) d++; }); });
     if(rows.length) gamesHTML=`<div class="po-pc-games">${rows.join('')}</div>`; }
   const parts=[];
-  if(banked) parts.push(`<b>≈${(banked.sum/banked.games*11).toFixed(1)}</b> banked · ${banked.games}G`);
-  if(pr && !pr.out) parts.push(`<b>≈${(+pr.mean).toFixed(1)}</b> projected`);
+  if(done){
+    // series settled — there's nothing left to project, so show the FINAL score (pr.mean already folds in the sweep bonus)
+    const fin = (pr && !pr.out) ? +pr.mean : (banked ? banked.sum/banked.games*11 : null);
+    if(fin!=null) parts.push(`<b>≈${fin.toFixed(1)}</b> final${banked?` · ${banked.games}G`:''}`);
+  } else {
+    if(banked) parts.push(`<b>≈${(banked.sum/banked.games*11).toFixed(1)}</b> banked · ${banked.games}G`);
+    if(pr && !pr.out) parts.push(`<b>≈${(+pr.mean).toFixed(1)}</b> projected`);
+  }
   if(owner) parts.push(esc(owner)+'’s pick');
   const statLine=parts.length?`<div class="po-pc-stat">${parts.join(' · ')}</div>`:'';
   return `<div class="po-pc"><div class="po-pc-hd"><span class="ol-l">Fantasy Playoffs · MLP Round 1</span><span class="pstat ${statCls}">${statLab}</span></div>
