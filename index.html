@@ -74,6 +74,10 @@
     padding:9px 17px;border-radius:10px;cursor:pointer;transition:.15s;white-space:nowrap}
   .nav-btn:hover{color:var(--ink);border-color:var(--line2)}
   .nav-btn[aria-selected="true"]{background:var(--optic);color:var(--on-optic);border-color:transparent}
+  .flip{display:flex;gap:2px;background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:2px;flex:none}
+  .flip-b{text-decoration:none;font-family:var(--cond);text-transform:uppercase;letter-spacing:.06em;font-weight:800;font-size:12.5px;color:var(--muted);padding:5px 12px;border-radius:7px;transition:.12s}
+  .flip-b[aria-selected="true"]{background:var(--optic);color:var(--on-optic)}
+  .flip-b:not([aria-selected="true"]):hover{color:var(--ink)}
   .nav-btn:focus-visible{outline:2px solid var(--optic);outline-offset:2px}
   .subnav{display:flex;gap:5px;margin:2px 0 0;overflow-x:auto;scrollbar-width:none}
   .subnav::-webkit-scrollbar{display:none}
@@ -940,7 +944,11 @@ border-top:1px solid var(--line);margin-top:20px;
 
 <header class="bar">
   <div class="wrap bar-top">
-    <button class="mark" id="homeBtn" aria-label="Home"><span class="ball" aria-hidden="true"></span><b>Fantasy</b><span>MLP</span></button>
+    <button class="mark" id="homeBtn" aria-label="Home"><span class="ball" aria-hidden="true"></span><b>Fantasy</b></button>
+    <div class="flip" role="tablist" aria-label="Game">
+      <a class="flip-b" href="./" role="tab" aria-selected="true">MLP</a>
+      <a class="flip-b" href="ppa.html" role="tab">PPA</a>
+    </div>
     <div class="bar-spacer"></div>
     <div class="profile-wrap">
       <svg class="profile-ic" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
