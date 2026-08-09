@@ -847,6 +847,20 @@ border-top:1px solid var(--line);margin-top:20px;
   .po-pg{white-space:nowrap}
   .po-pg .po-gl{color:var(--faint);font-size:8.5px;text-transform:uppercase;letter-spacing:.03em}
   .po-pg b.w{color:var(--win)}.po-pg b.l{color:var(--loss)}
+  /* My Team — playoff card */
+  .mt-po{border:1px solid color-mix(in srgb,var(--optic) 30%,var(--line));border-radius:14px;padding:12px 14px;margin:0 0 18px;background:color-mix(in srgb,var(--optic) 5%,transparent)}
+  .mt-po-hd{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px}
+  .mt-po-hd .ol-l{color:var(--optic)}
+  .mt-po-proj{font-family:var(--mono);font-size:17px;font-weight:800;color:var(--ink)}
+  .mt-po-proj small{font-size:10px;font-weight:600;color:var(--muted)}
+  .mt-po-mu{display:flex;align-items:center;gap:10px;width:100%;appearance:none;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;color:inherit;font:inherit;cursor:pointer;text-align:left;transition:border-color .12s,background .12s}
+  .mt-po-mu:hover{border-color:color-mix(in srgb,var(--optic) 45%,transparent);background:var(--bg3)}
+  .mt-po-mul{font-family:var(--cond);text-transform:uppercase;letter-spacing:.05em;font-size:11px;font-weight:700;color:var(--optic-deep);flex:none}
+  .mt-po-opp{flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mt-po-opp small{color:var(--muted);font-weight:500}
+  .mt-po-win{flex:none;font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .mt-po-win b{color:var(--win);font-size:15px}
+  .mt-po-lh{font-family:var(--cond);text-transform:uppercase;letter-spacing:.04em;font-size:10px;color:var(--faint);margin:12px 0 4px}
   .po-mlp-side{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;text-align:left;background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:6px 8px;border-radius:9px;transition:background .12s}
   .po-mlp-side.r{text-align:right;align-items:flex-end}
   .po-mlp-side:hover{background:var(--bg3)}
@@ -2547,6 +2561,24 @@ let _sb = null;
 function reRenderProfileViews(){ renderHero(); renderBoard(); renderLeaders(); renderWaivers(); renderAvailable(); renderMyTeam(); updateMyTeamNav(); }
 // Show/hide the "My Team" nav tab based on whether a team is claimed (via login or the local picker).
 function updateMyTeamNav(){ const btn=document.querySelector('.nav-btn[data-nav="myteam"]'); if(btn) btn.hidden = !(MYTEAM && byId[MYTEAM]); }
+// Fantasy-playoff card for the My Team page — '' unless this team is one of the 4 in the playoffs. Shows the
+// projected total, the semifinal opponent + win%, and the playoff roster with each player's live status.
+function myTeamPlayoffHTML(teamId){
+  const P=DATA.playoffs; if(!P||!P.teams) return '';
+  if(typeof _poData==='undefined'||!_poData){ try{ renderPlayoffs(); }catch(e){} }
+  if(!_poData||!_poData.ts) return '';
+  const me=_poData.ts.find(x=>x.teamId===teamId && x.proj); if(!me) return '';
+  const f=(c,s)=>_poData.ts.find(x=>x.conf===c&&x.dseed===s);      // rebuild the bracket: (A1 vs B2), (A2 vs B1)
+  const semis=[[f('A',1),f('B',2)],[f('A',2),f('B',1)]];
+  const pair=semis.find(pr=>pr[0]&&pr[1]&&(pr[0].teamId===teamId||pr[1].teamId===teamId));
+  const opp=pair?(pair[0].teamId===teamId?pair[1]:pair[0]):null;
+  const wp=opp?_poData.matchWin(me,opp):null;
+  const roster=[...me.pr].sort((a,b)=>b.mean-a.mean);
+  const rows=roster.map(p=>`<button class="prow" data-player="${esc(p.name)}"><span class="pn">${esc(p.name)}${sxTag(p.name)}${typeof pstat==='function'?pstat(p):''}<span class="pm">${esc(p.mlp||'')}${p.out?' · not in Round 1':''}</span></span><span class="pp"${p.out?' style="color:var(--faint)"':''}>${p.out?'—':'≈'+p.mean.toFixed(1)}</span></button>`).join('');
+  const mu=opp?`<button class="mt-po-mu" data-poa="${esc(me.teamId)}" data-pob="${esc(opp.teamId)}" data-polabel="Semifinal"><span class="mt-po-mul">Semifinal <span class="po-caret">›</span></span><span class="mt-po-opp">vs ${esc(opp.team)} <small>(${esc(opp.owner)})</small></span><span class="mt-po-win"><b>${wp!=null?wp+'%':'—'}</b> to win</span></button>`:'';
+  return `<div class="mt-po"><div class="mt-po-hd"><span class="ol-l">Fantasy Playoffs · MLP Round 1</span><span class="mt-po-proj">≈${me.proj}<small> proj pts</small></span></div>
+    ${mu}<div class="mt-po-lh">Playoff roster — expected Round-1 points</div><div class="plist">${rows}</div></div>`;
+}
 // The logged-in user's own team as a full page — reuses the team-modal renderers (projection, overview, squad).
 function renderMyTeam(){
   const host=document.getElementById('myteam-body'), h2=document.getElementById('mt-h2'), sub=document.getElementById('mt-sub');
@@ -2559,9 +2591,10 @@ function renderMyTeam(){
   const t=byId[MYTEAM];
   if(h2) h2.textContent=t.name;
   if(sub) sub.textContent=`${t.owner} · Division ${t.conf} · #${t.totalRank} on points · ${t.totalPts} PF`;
-  host.innerHTML=`<div class="mbody">${teamProjHTML(t)}${overviewHTML(t)}<div class="ol-l" style="margin:18px 0 8px">Squad</div>${rosterHTML(t)}</div>`;
+  host.innerHTML=`<div class="mbody">${myTeamPlayoffHTML(t.id)}${teamProjHTML(t)}${overviewHTML(t)}<div class="ol-l" style="margin:18px 0 8px">Squad</div>${rosterHTML(t)}</div>`;
   host.querySelectorAll('[data-player]').forEach(el=>el.addEventListener('click',()=>openPlayer(el.dataset.player, t.conf)));
   host.querySelectorAll('[data-mu-tour]').forEach(el=>el.addEventListener('click',()=>openMatch(el.dataset.muTour, el.dataset.muH, el.dataset.muA)));
+  host.querySelectorAll('[data-poa]').forEach(el=>el.addEventListener('click',()=>openPlayoffMatchup(el.dataset.poa, el.dataset.pob, el.dataset.polabel)));
   requestAnimationFrame(()=>host.querySelectorAll('.bar').forEach(b=>{ b.style.height=b.dataset.h+'%'; }));
 }
 // Local fallback: a select toggling League view <-> this build's own team, persisted per browser.
