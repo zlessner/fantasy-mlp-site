@@ -927,6 +927,7 @@ border-top:1px solid var(--line);margin-top:20px;
     <button class="nav-btn" data-nav="standings" aria-selected="false">Standings</button>
     <button class="nav-btn" data-nav="schedule" aria-selected="false">Schedule</button>
     <button class="nav-btn" data-nav="players" aria-selected="false">Players</button>
+    <button class="nav-btn" data-nav="myteam" aria-selected="false" hidden>My Team</button>
   </nav>
 
   <!-- players sub-nav (Leaders / Free Agents / MLP Teams) -->
@@ -1002,6 +1003,13 @@ border-top:1px solid var(--line);margin-top:20px;
   </section>
 
   <!-- playoffs -->
+  <!-- my team (nav tab + section revealed only when signed in / a team is claimed) -->
+  <section id="myteam-view" data-view="myteam" hidden>
+    <div class="shead"><div><div class="eyebrow">Your team</div><h2 id="mt-h2">My Team</h2><p id="mt-sub"></p></div></div>
+    <div class="rule"></div>
+    <div id="myteam-body"></div>
+  </section>
+
   <section id="playoffs" data-view="playoffs">
     <div class="shead">
       <div>
@@ -2508,6 +2516,7 @@ function showView(v){
   document.querySelectorAll('main [data-view]').forEach(el=>{ el.hidden = el.dataset.view!==v; if(!el.hidden) _replayFade(el); });
   document.querySelectorAll('.nav-btn').forEach(b=>b.setAttribute('aria-selected', String(b.dataset.nav===v)));
   if(v==='players') applyPlayersSub(); // hide the two inactive sub-sections
+  if(v==='myteam') renderMyTeam();
   window.scrollTo({top:0,behavior:'auto'});
 }
 function _hideMlpBack(){ const bk=document.getElementById('mlp-back'); if(bk) bk.hidden=true; } // drop the from-player trail on normal nav
@@ -2535,7 +2544,26 @@ const MY_TEAM_ID = 'B8'; // Philly Pickleball Club — used only by the local (n
 // site falls back to the local League/My-team toggle (the Claude artifact can't reach Supabase anyway).
 const SUPA = { url: 'https://igiimsswldnuidvybukg.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWltc3N3bGRudWlkdnlidWtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyMzAyOTMsImV4cCI6MjEwMTgwNjI5M30.9Z6vOOCgVIdXqFCcWm77vCnkjx42F0tXeKAB2szYcI0' };
 let _sb = null;
-function reRenderProfileViews(){ renderHero(); renderBoard(); renderLeaders(); renderWaivers(); renderAvailable(); }
+function reRenderProfileViews(){ renderHero(); renderBoard(); renderLeaders(); renderWaivers(); renderAvailable(); renderMyTeam(); updateMyTeamNav(); }
+// Show/hide the "My Team" nav tab based on whether a team is claimed (via login or the local picker).
+function updateMyTeamNav(){ const btn=document.querySelector('.nav-btn[data-nav="myteam"]'); if(btn) btn.hidden = !(MYTEAM && byId[MYTEAM]); }
+// The logged-in user's own team as a full page — reuses the team-modal renderers (projection, overview, squad).
+function renderMyTeam(){
+  const host=document.getElementById('myteam-body'), h2=document.getElementById('mt-h2'), sub=document.getElementById('mt-sub');
+  if(!host) return;
+  if(!MYTEAM || !byId[MYTEAM]){
+    if(h2) h2.textContent='My Team'; if(sub) sub.textContent='Sign in to claim and see your team here.';
+    host.innerHTML='<p class="pl-empty">Not signed in yet — use <b>Sign in</b> (top right) and the team tied to your email will show up here.</p>';
+    return;
+  }
+  const t=byId[MYTEAM];
+  if(h2) h2.textContent=t.name;
+  if(sub) sub.textContent=`${t.owner} · Division ${t.conf} · #${t.totalRank} on points · ${t.totalPts} PF`;
+  host.innerHTML=`<div class="mbody">${teamProjHTML(t)}${overviewHTML(t)}<div class="ol-l" style="margin:18px 0 8px">Squad</div>${rosterHTML(t)}</div>`;
+  host.querySelectorAll('[data-player]').forEach(el=>el.addEventListener('click',()=>openPlayer(el.dataset.player, t.conf)));
+  host.querySelectorAll('[data-mu-tour]').forEach(el=>el.addEventListener('click',()=>openMatch(el.dataset.muTour, el.dataset.muH, el.dataset.muA)));
+  requestAnimationFrame(()=>host.querySelectorAll('.bar').forEach(b=>{ b.style.height=b.dataset.h+'%'; }));
+}
 // Local fallback: a select toggling League view <-> this build's own team, persisted per browser.
 function initProfile(){
   const sel=document.getElementById('profile'); if(!sel) return;
@@ -2548,8 +2576,9 @@ function initProfile(){
     try{ if(MYTEAM) localStorage.setItem('fmlp-team',MYTEAM); else localStorage.removeItem('fmlp-team'); }catch(e){}
     document.body.classList.toggle('has-profile', !!MYTEAM);
     reRenderProfileViews();
-    if(MYTEAM){ showView('standings'); window.scrollTo({top:0,behavior:'auto'}); }
+    if(MYTEAM){ showView('myteam'); window.scrollTo({top:0,behavior:'auto'}); }
   });
+  updateMyTeamNav(); renderMyTeam();   // reveal the tab if a team is already stored locally
 }
 function loadSupabase(){ return new Promise((res,rej)=>{ if(window.supabase) return res();
   const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
@@ -2569,6 +2598,7 @@ async function applySession(session){
   if(user){ try{ const { data } = await _sb.rpc('my_team'); if(data && byId[data]) MYTEAM=data; }catch(e){} }
   document.body.classList.toggle('has-profile', !!MYTEAM);
   renderAuthCtl(user); reRenderProfileViews();
+  if(MYTEAM) showView('myteam');   // land a signed-in owner on their own team
 }
 function renderAuthCtl(user){
   const el=document.getElementById('authctl'); if(!el) return; el.hidden=false;
