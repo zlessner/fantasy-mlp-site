@@ -83,6 +83,22 @@
   .subnav-btn[aria-selected="true"]{color:var(--optic-deep);border-bottom-color:var(--optic)}
   .subnav-btn:focus-visible{outline:2px solid var(--optic);outline-offset:2px}
   [hidden]{display:none!important}
+  /* Collapsible disclosure sections (native <details>) */
+  details.disc{border:1px solid var(--line);border-radius:12px;background:var(--bg2);margin:10px 0}
+  details.disc>summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;align-items:center;gap:8px;
+    font-family:var(--cond);text-transform:uppercase;letter-spacing:.04em;font-weight:700;font-size:13px;color:var(--ink)}
+  details.disc>summary::-webkit-details-marker{display:none}
+  details.disc>summary::after{content:'▸';margin-left:2px;color:var(--faint);font-size:11px;transition:transform .15s;flex:none}
+  details.disc[open]>summary::after{transform:rotate(90deg)}
+  details.disc>summary:hover{color:var(--optic)}
+  details.disc .disc-m{margin-left:auto;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0}
+  details.disc .disc-body{padding:2px 14px 14px}
+  details.disc .disc-body>.po-h:first-child{margin-top:2px}
+  @media(max-width:560px){
+    .nav{gap:4px} .nav-btn{padding:8px 12px;font-size:12.5px;letter-spacing:.03em}
+    .mt-po{padding:11px 11px} .mbody{padding:14px 13px 18px}
+    .mt-po-mu{flex-wrap:wrap} .mt-po-win{margin-left:auto}
+  }
   main [data-view]{animation:viewfade .28s ease}
   @keyframes viewfade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
   .mark{display:flex;align-items:center;gap:11px;font-family:var(--cond);
@@ -2577,7 +2593,8 @@ function myTeamPlayoffHTML(teamId){
   const rows=roster.map(p=>`<button class="prow" data-player="${esc(p.name)}"><span class="pn">${esc(p.name)}${sxTag(p.name)}${typeof pstat==='function'?pstat(p):''}<span class="pm">${esc(p.mlp||'')}${p.out?' · not in Round 1':''}</span></span><span class="pp"${p.out?' style="color:var(--faint)"':''}>${p.out?'—':'≈'+p.mean.toFixed(1)}</span></button>`).join('');
   const mu=opp?`<button class="mt-po-mu" data-poa="${esc(me.teamId)}" data-pob="${esc(opp.teamId)}" data-polabel="Semifinal"><span class="mt-po-mul">Semifinal <span class="po-caret">›</span></span><span class="mt-po-opp">vs ${esc(opp.team)} <small>(${esc(opp.owner)})</small></span><span class="mt-po-win"><b>${wp!=null?wp+'%':'—'}</b> to win</span></button>`:'';
   return `<div class="mt-po"><div class="mt-po-hd"><span class="ol-l">Fantasy Playoffs · MLP Round 1</span><span class="mt-po-proj">≈${me.proj}<small> proj pts</small></span></div>
-    ${mu}<div class="mt-po-lh">Playoff roster — expected Round-1 points</div><div class="plist">${rows}</div></div>`;
+    ${mu}
+    <details class="disc" style="margin:12px 0 0;background:transparent"><summary>Playoff roster<span class="disc-m">${roster.length} players · ≈pts</span></summary><div class="disc-body" style="padding:2px 2px 4px"><div class="plist">${rows}</div></div></details></div>`;
 }
 // The logged-in user's own team as a full page — reuses the team-modal renderers (projection, overview, squad).
 function renderMyTeam(){
@@ -2591,11 +2608,19 @@ function renderMyTeam(){
   const t=byId[MYTEAM];
   if(h2) h2.textContent=t.name;
   if(sub) sub.textContent=`${t.owner} · Division ${t.conf} · #${t.totalRank} on points · ${t.totalPts} PF`;
-  host.innerHTML=`<div class="mbody">${myTeamPlayoffHTML(t.id)}${teamProjHTML(t)}${overviewHTML(t)}<div class="ol-l" style="margin:18px 0 8px">Squad</div>${rosterHTML(t)}</div>`;
+  const po=myTeamPlayoffHTML(t.id);
+  const rec=`${t.W}–${t.L}${t.T?'–'+t.T:''}`;
+  host.innerHTML=`<div class="mbody">${po}
+    <details class="disc"${po?'':' open'}><summary>Season stats &amp; results<span class="disc-m">${rec} · ${t.totalPts} PF</span></summary><div class="disc-body">${teamProjHTML(t)}${overviewHTML(t)}</div></details>
+    <details class="disc"><summary>Full squad<span class="disc-m">every-stop roster</span></summary><div class="disc-body">${rosterHTML(t)}</div></details>
+  </div>`;
   host.querySelectorAll('[data-player]').forEach(el=>el.addEventListener('click',()=>openPlayer(el.dataset.player, t.conf)));
   host.querySelectorAll('[data-mu-tour]').forEach(el=>el.addEventListener('click',()=>openMatch(el.dataset.muTour, el.dataset.muH, el.dataset.muA)));
   host.querySelectorAll('[data-poa]').forEach(el=>el.addEventListener('click',()=>openPlayoffMatchup(el.dataset.poa, el.dataset.pob, el.dataset.polabel)));
-  requestAnimationFrame(()=>host.querySelectorAll('.bar').forEach(b=>{ b.style.height=b.dataset.h+'%'; }));
+  // draw/redraw the season chart bars — on first paint if open, and again whenever a section is expanded
+  const drawBars=root=>root.querySelectorAll('.bar').forEach(b=>{ b.style.height=b.dataset.h+'%'; });
+  requestAnimationFrame(()=>drawBars(host));
+  host.querySelectorAll('details.disc').forEach(d=>d.addEventListener('toggle',()=>{ if(d.open) requestAnimationFrame(()=>drawBars(d)); }));
 }
 // Local fallback: a select toggling League view <-> this build's own team, persisted per browser.
 function initProfile(){
@@ -2867,11 +2892,17 @@ function renderPlayoffs(){
     const mus=r1.map(m=>`<div class="po-mlp-mu"><div class="po-mlp-top">${side(m.a,m.aName,m.aSeed,false)}<span class="po-mlp-vs">vs</span>${side(m.b,m.bName,m.bSeed,true)}</div>${result(m)}</div>`).join('');
     return `<div class="po-mlpmatch"><div class="po-mlpmh"><h3>MLP Round 1 · Dallas</h3><span class="po-sub">The real club series these projections run over — seeds 5–12 (the top 4 seeds have a bye). Tap a team for its season.</span></div><div class="po-mlp-grid">${mus}</div></div>`;
   })();
-  body.innerHTML=`${mlpSeries}${bracket}
-    <p class="po-note po-projnote">🔮 <b>Projected</b> — tap a semifinal for both rosters and each player's projection. The win % and ≈points are a Monte-Carlo estimate over MLP Round 1 (Dallas): each player's expected game point-share, a bonus for their team's chance to sweep (the only time the series result matters), and whether they take the court. Draft in progress (${P.picksMade}/48 picks), so these shift as picks land.</p>
-    <h3 class="po-h">Format</h3><div class="po-rules">${format.map(blockHTML).join('')}</div>
-    ${general?`<h3 class="po-h">Rules</h3><div class="po-rules">${blockHTML(general)}</div>`:''}
-    <h3 class="po-h">Scoring<span class="po-sub">points-based — every game you play counts</span></h3>${scoringHTML}`;
+  const draftDone=(P.picksMade||0)>=48;
+  body.innerHTML=`${bracket}
+    <p class="po-note po-projnote">🔮 Win % and ≈points are a Monte-Carlo estimate over MLP Round 1 (Dallas). Tap a semifinal for both rosters and every player's projection.${draftDone?'':` Draft in progress (${P.picksMade}/48) — these shift as picks land.`}</p>
+    ${mlpSeries}
+    <details class="disc"><summary>Format, rules &amp; scoring<span class="disc-m">how it works</span></summary>
+      <div class="disc-body">
+        <h3 class="po-h">Format</h3><div class="po-rules">${format.map(blockHTML).join('')}</div>
+        ${general?`<h3 class="po-h">Rules</h3><div class="po-rules">${blockHTML(general)}</div>`:''}
+        <h3 class="po-h">Scoring<span class="po-sub">points-based — every game you play counts</span></h3>${scoringHTML}
+      </div>
+    </details>`;
   body.querySelectorAll('[data-poa]').forEach(b=>b.addEventListener('click',()=>openPlayoffMatchup(b.dataset.poa,b.dataset.pob,b.dataset.polabel)));
   body.querySelectorAll('.po-mlp-side[data-mlpteam]').forEach(b=>b.addEventListener('click',()=>openMlpTeam(b.dataset.mlpteam)));
   body.querySelectorAll('.po-mm[data-series]').forEach(b=>b.addEventListener('click',()=>openMlpMatch(b.dataset.series,+b.dataset.mi)));
