@@ -873,6 +873,8 @@ border-top:1px solid var(--line);margin-top:20px;
   .mt-po-hd .ol-l{color:var(--optic)}
   .mt-po-proj{font-family:var(--mono);font-size:17px;font-weight:800;color:var(--ink)}
   .mt-po-proj small{font-size:10px;font-weight:600;color:var(--muted)}
+  .mt-po-pre{font-family:var(--mono);font-size:11px;color:var(--muted);margin:-4px 0 8px}
+  .mt-po-pre b{color:var(--ink)}
   .mt-po-mu{display:flex;align-items:center;gap:10px;width:100%;appearance:none;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;color:inherit;font:inherit;cursor:pointer;text-align:left;transition:border-color .12s,background .12s}
   .mt-po-mu:hover{border-color:color-mix(in srgb,var(--optic) 45%,transparent);background:var(--bg3)}
   .mt-po-mul{font-family:var(--cond);text-transform:uppercase;letter-spacing:.05em;font-size:11px;font-weight:700;color:var(--optic-deep);flex:none}
@@ -2608,6 +2610,7 @@ function myTeamPlayoffHTML(teamId){
   const rows=roster.map(p=>`<button class="prow" data-player="${esc(p.name)}"><span class="pn">${esc(p.name)}${sxTag(p.name)}${typeof pstat==='function'?pstat(p):''}<span class="pm">${esc(p.mlp||'')}${p.out?' · not in Round 1':''}</span></span><span class="pp"${p.out?' style="color:var(--faint)"':''}>${p.out?'—':'≈'+p.mean.toFixed(1)}</span></button>`).join('');
   const mu=opp?`<button class="mt-po-mu" data-poa="${esc(me.teamId)}" data-pob="${esc(opp.teamId)}" data-polabel="Semifinal"><span class="mt-po-mul">Semifinal <span class="po-caret">›</span></span><span class="mt-po-opp">vs ${esc(opp.team)} <small>(${esc(opp.owner)})</small></span><span class="mt-po-win"><b>${wp!=null?wp+'%':'—'}</b> to win</span></button>`:'';
   return `<div class="mt-po"><div class="mt-po-hd"><span class="ol-l">Fantasy Playoffs · MLP Round 1</span><span class="mt-po-proj">≈${me.proj}<small> proj pts</small></span></div>
+    ${me.preProj!=null?`<div class="mt-po-pre">Pre-tournament projection was <b>≈${me.preProj}</b></div>`:''}
     ${mu}
     <details class="disc" style="margin:12px 0 0;background:transparent"><summary>Playoff roster<span class="disc-m">${roster.length} players · ≈pts</span></summary><div class="disc-body" style="padding:2px 2px 4px"><div class="plist">${rows}</div></div></details></div>`;
 }
@@ -2827,7 +2830,7 @@ function renderPlayoffs(){
     }
     return {mean:pPlay*perGame, pre:+(pPlay*perGame).toFixed(2), pPlay, w, share:+share.toFixed(3), seed:info.seed, sweepP:+pSweep.toFixed(2), out:false, mlp, mlpKey:k, oppKey:info.o, liveFrac:1, status:'ns'};
   }
-  ts.forEach(t=>{ t.pr=t.players.map(p=>({...p, ...pproj(p.name)})); t.proj=+t.pr.reduce((s,p)=>s+p.mean,0).toFixed(1); });
+  ts.forEach(t=>{ t.pr=t.players.map(p=>({...p, ...pproj(p.name)})); t.proj=+t.pr.reduce((s,p)=>s+p.mean,0).toFixed(1); t.preProj=+t.pr.reduce((s,p)=>s+(p.pre||0),0).toFixed(1); });
   // Monte-Carlo win %, with CORRELATED player outcomes. Three shared effects, all drawn once per iteration and
   // reused across both fantasy sides (it's the same real series):
   //   1. Sweep — one 1.5× flag per MLP club, shared by all its rostered players.

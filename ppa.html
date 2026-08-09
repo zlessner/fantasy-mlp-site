@@ -27,6 +27,13 @@
   .bar-spacer{flex:1}
   .tgl{appearance:none;background:var(--bg2);border:1px solid var(--line);color:var(--muted);width:36px;height:36px;border-radius:9px;cursor:pointer;font-size:16px}
   .tgl:hover{color:var(--ink)}
+  .authctl{display:flex;align-items:center;gap:6px}
+  .auth-btn{appearance:none;border:1px solid var(--line);background:var(--bg2);color:var(--ink);font-family:var(--cond);text-transform:uppercase;letter-spacing:.05em;font-weight:800;font-size:12px;padding:7px 12px;border-radius:9px;cursor:pointer}
+  .auth-btn.primary{background:var(--optic);color:var(--on-optic);border-color:transparent}
+  .auth-nm{font-size:12.5px;color:var(--muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .auth-email{background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:6px 9px;font-size:13px;width:160px}
+  .auth-msg{font-size:12px;color:var(--muted)} .auth-msg.err{color:var(--loss)}
+  .saved{font-family:var(--mono);font-size:11px;color:var(--win)}
   /* title */
   .titleblock{padding:18px 0 16px;border-bottom:1px solid var(--line);margin-bottom:16px}
   .eyebrow{font-family:var(--cond);text-transform:uppercase;letter-spacing:.14em;font-size:12px;color:var(--optic);font-weight:700}
@@ -90,6 +97,7 @@
     <a class="flip-b" href="ppa.html" role="tab" aria-selected="true">PPA</a>
   </div>
   <div class="bar-spacer"></div>
+  <span id="authctl" class="authctl"></span>
   <button class="tgl" id="themeBtn" aria-label="Toggle light and dark theme" title="Toggle theme">◐</button>
 </div></header>
 <div class="wrap">
@@ -126,7 +134,7 @@
       <div class="cap-top"><span id="capUsed">$0</span><span id="capLeft">of $50,000</span></div>
       <div class="cap-bar"><div class="cap-fill" id="capFill" style="width:0%"></div></div>
     </div>
-    <div class="score"><div class="big" id="scoreN">0</div><div class="lab">your points</div><div class="vs" id="vs"></div></div>
+    <div class="score"><div class="big" id="scoreN">0</div><div class="lab">your points</div><div class="vs" id="vs"></div><div class="saved" id="saved"></div></div>
   </div>
 </div></div>
 
@@ -170,7 +178,7 @@ function toggle(name){
   const i=picked.indexOf(name);
   if(i>=0) picked.splice(i,1);
   else { if(picked.length>=DATA.slots) return; if(capUsed()+byName[name].salary>DATA.cap) return; picked.push(name); }
-  renderTray(); renderRows();
+  renderTray(); renderRows(); saveMyLineup();
 }
 function renderRows(){
   const used=capUsed(), full=picked.length>=DATA.slots;
@@ -197,5 +205,47 @@ document.querySelectorAll('th[data-sort]').forEach(th=>th.onclick=()=>{
   th.setAttribute('aria-sort', sortDir<0?'descending':'ascending'); renderRows();
 });
 renderTray(); renderRows();
+
+// ---- Supabase auth + per-user saved lineup (shared project with the MLP app) -----------------------------
+const SUPA = { url:'https://igiimsswldnuidvybukg.supabase.co', anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaWltc3N3bGRudWlkdnlidWtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyMzAyOTMsImV4cCI6MjEwMTgwNjI5M30.9Z6vOOCgVIdXqFCcWm77vCnkjx42F0tXeKAB2szYcI0' };
+let _sb=null, ME=null;
+function loadSb(){ return new Promise((res,rej)=>{ if(window.supabase) return res(); const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'; s.onload=res; s.onerror=()=>rej(new Error('blocked')); document.head.appendChild(s); }); }
+async function initAuth(){
+  try{ await loadSb(); }catch(e){ return; }
+  if(!window.supabase) return;
+  _sb = window.supabase.createClient(SUPA.url, SUPA.anonKey);
+  try{ const {data:{session}} = await _sb.auth.getSession(); await applySession(session); }catch(e){ renderAuth(null); }
+  _sb.auth.onAuthStateChange((_e,s)=>applySession(s));
+}
+async function applySession(session){ ME = session && session.user ? (session.user.email||'').toLowerCase() : null; renderAuth(session && session.user); if(ME) await loadMyLineup(); }
+function renderAuth(user){
+  const el=document.getElementById('authctl'); if(!el) return;
+  if(user){ el.innerHTML=`<span class="auth-nm" title="${(user.email||'')}">${(user.email||'').split('@')[0]}</span><button class="auth-btn" id="signout">Sign out</button>`;
+    document.getElementById('signout').onclick=()=>_sb.auth.signOut().then(()=>location.reload()); }
+  else { el.innerHTML=`<button class="auth-btn primary" id="signin">Sign in</button>`; document.getElementById('signin').onclick=openSignin; }
+}
+function openSignin(){
+  const el=document.getElementById('authctl');
+  el.innerHTML=`<input id="ae" class="auth-email" type="email" placeholder="you@email.com" aria-label="Email"><button class="auth-btn primary" id="asend">Send link</button>`;
+  const inp=document.getElementById('ae'); inp.focus();
+  const send=async()=>{ const email=(inp.value||'').trim().toLowerCase(); if(!email) return; const b=document.getElementById('asend'); b.textContent='…'; b.disabled=true;
+    try{ const {error}=await _sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: location.href } });
+      el.innerHTML = error ? `<span class="auth-msg err">${error.message}</span>` : `<span class="auth-msg">✓ Check ${email} for a link.</span>`;
+    }catch(e){ el.innerHTML=`<span class="auth-msg err">Sign-in failed — retry.</span>`; } };
+  document.getElementById('asend').onclick=send; inp.onkeydown=e=>{ if(e.key==='Enter') send(); };
+}
+async function loadMyLineup(){
+  try{ const {data}=await _sb.from('ppa_lineups').select('picks').eq('email',ME).eq('event_slug',DATA.event.slug).maybeSingle();
+    if(data && Array.isArray(data.picks)){ picked = data.picks.filter(n=>byName[n]).slice(0,DATA.slots); renderTray(); renderRows(); } }catch(e){}
+}
+let _saveT=null;
+function saveMyLineup(){
+  if(!ME||!_sb) return; clearTimeout(_saveT);
+  _saveT=setTimeout(async()=>{ try{
+    await _sb.from('ppa_lineups').upsert({ email:ME, event_slug:DATA.event.slug, picks:picked, updated_at:new Date().toISOString() }, { onConflict:'email,event_slug' });
+    const s=document.getElementById('saved'); if(s){ s.textContent='✓ saved'; clearTimeout(s._t); s._t=setTimeout(()=>s.textContent='',1600); }
+  }catch(e){} }, 500);
+}
+initAuth();
 </script>
 </body></html>
