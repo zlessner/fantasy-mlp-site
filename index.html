@@ -2844,6 +2844,9 @@ function renderPlayoffs(){
     const prep=side=>side.pr.filter(p=>p.mean>0).map(p=>({club:p.mlpKey||norm(p.mlp||''), opp:p.oppKey||'', sw:p.sweepP||0,
       base:p.mean/(1+0.5*(p.sweepP||0)), lf:p.liveFrac==null?1:p.liveFrac}));
     const A2=prep(A), B2=prep(B); let aw=0; const N=2500;
+    // No unplayed variance left (every player's series is settled) → the result is decided: return the true 100/0/50,
+    // not the 2–98 cap that exists only to avoid overconfidence while games are still to come.
+    if(![...A2,...B2].some(p=>p.lf>0)) return A.proj>B.proj?100:(A.proj<B.proj?0:50);
     const CORR=0.40, IDIO=0.25, FLOOR=1.7;                       // club-momentum vs idiosyncratic sd — both scale with liveFrac
     const skey=(a,b)=>a<b?a+'~'+b:b+'~'+a;
     for(let i=0;i<N;i++){ const swept={}, mom={};
