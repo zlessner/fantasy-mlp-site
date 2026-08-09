@@ -2225,6 +2225,7 @@ function poPlayerCard(name, mlpName){
     if(banked) parts.push(`<b>≈${(banked.sum/banked.games*11).toFixed(1)}</b> banked · ${banked.games}G`);
     if(pr && !pr.out) parts.push(`<b>≈${(+pr.mean).toFixed(1)}</b> projected`);
   }
+  if(st && pr && !pr.out && pr.pre!=null) parts.push(`was ≈${(+pr.pre).toFixed(1)} pre-tourney`);
   if(owner) parts.push(esc(owner)+'’s pick');
   const statLine=parts.length?`<div class="po-pc-stat">${parts.join(' · ')}</div>`:'';
   return `<div class="po-pc"><div class="po-pc-hd"><span class="ol-l">Fantasy Playoffs · MLP Round 1</span><span class="pstat ${statCls}">${statLab}</span></div>
@@ -2822,9 +2823,9 @@ function renderPlayoffs(){
       // liveFrac = fraction of this projection still UNPLAYED (drives the correlated-sim variance): 0 once the series
       // is decided (fully banked → no uncertainty), Erem/Etot for a player mid-series, 1 for a sat player (all future).
       const liveFrac = over?0:(pa?Erem/Etot:1);
-      return {mean:+(pL*11*bShare*mL).toFixed(2), pPlay:+pL.toFixed(2), w, share:+bShare.toFixed(3), seed:info.seed, sweepP:+pSw.toFixed(2), out:false, mlp, mlpKey:k, oppKey:info.o, liveFrac:+liveFrac.toFixed(3), live:true, status, banked:pa?+(pa.sum/pa.games*11).toFixed(2):null};
+      return {mean:+(pL*11*bShare*mL).toFixed(2), pre:+(pPlay*perGame).toFixed(2), pPlay:+pL.toFixed(2), w, share:+bShare.toFixed(3), seed:info.seed, sweepP:+pSw.toFixed(2), out:false, mlp, mlpKey:k, oppKey:info.o, liveFrac:+liveFrac.toFixed(3), live:true, status, banked:pa?+(pa.sum/pa.games*11).toFixed(2):null};
     }
-    return {mean:pPlay*perGame, pPlay, w, share:+share.toFixed(3), seed:info.seed, sweepP:+pSweep.toFixed(2), out:false, mlp, mlpKey:k, oppKey:info.o, liveFrac:1, status:'ns'};
+    return {mean:pPlay*perGame, pre:+(pPlay*perGame).toFixed(2), pPlay, w, share:+share.toFixed(3), seed:info.seed, sweepP:+pSweep.toFixed(2), out:false, mlp, mlpKey:k, oppKey:info.o, liveFrac:1, status:'ns'};
   }
   ts.forEach(t=>{ t.pr=t.players.map(p=>({...p, ...pproj(p.name)})); t.proj=+t.pr.reduce((s,p)=>s+p.mean,0).toFixed(1); });
   // Monte-Carlo win %, with CORRELATED player outcomes. Three shared effects, all drawn once per iteration and
