@@ -2003,6 +2003,10 @@ const PLAY_WEIGHT = {
 Object.assign(PLAY_WEIGHT, { 'Alix Truong':0.90, 'Brooke Buckner':0.95, 'Will Howells':0.82, 'Judit Castillo':0.12, 'Milan Rane':0.04, 'Hunter Johnson':0.15, 'Christopher Haworth':0.25, 'Tyson McGuffin':0.18 });
 // Direct P(play) overrides — confirmed availability, used as-is for the Play column and to scale the projection.
 const PLAY_PROB = { 'Alix Truong':0.95, 'Brooke Buckner':0.95, 'Will Howells':0.80, 'Noe Khlif':0.90 };
+// Gender-doubles partner uncertainty: with prob p, a player's WD partner is `alt` instead of their default
+// (highest-DUPR teammate). Blends the partner's DUPR into the pair (expected value). e.g. Brooklyn: 25% Jackie
+// pairs with Hannah Blatt, not Rachel Rohrabacher.
+const PARTNER_MIX = { 'Jackie Kawamoto': { alt:'Hannah Blatt', p:0.25 } };
 // Confirmed dreambreaker (singles-relay) players — only these get the singles/DB share blend + P(play) floor,
 // since the relay is a team's DESIGNATED 4, not everyone. Harvested from picklekey.com team pages (Game-5
 // relays) for all 8 Round-1 teams. The relay is POSITIONAL & WITHIN-GENDER: a team's breakers go in singles-DUPR
@@ -2777,7 +2781,8 @@ function makeProjector(ROUND, HOST_P, HOME_EDGE_P, LIVE){
       const myOg=_mix(sortD(k,og)), oOg=_mix(sortD(info.o,og)), oGmix=_mix(oG); // mixed pools exclude no-mixed players
       const r=Math.max(0, myG.findIndex(x=>x.n===name));                // my rank among same-gender teammates
       const at=(a,i)=>a.length?a[Math.min(i,a.length-1)].d:null;
-      const mdMate=(myG.find(x=>x.n!==name)||{}).d;                     // gender-doubles partner: best other same-gender (WD/MD)
+      let mdMate=(myG.find(x=>x.n!==name)||{}).d;                       // gender-doubles partner: best other same-gender (WD/MD)
+      if(typeof PARTNER_MIX!=='undefined' && PARTNER_MIX[name] && mdMate!=null){ const _pm=PARTNER_MIX[name], _ad=DUP[_pm.alt]&&DUP[_pm.alt].d; if(_ad!=null) mdMate=(1-_pm.p)*mdMate+_pm.p*_ad; }  // partner uncertainty → expected partner DUPR
       const mxMate=at(myOg,r);                                          // mixed partner: rank-matched opposite gender who PLAYS mixed
       // Mixed-only = a 3rd-by-rating player who's ALSO low-minutes: the top two of each gender own the
       // gender-doubles slot, so a genuine sub who gets on court skews to mixed and has no always-played early
@@ -2794,8 +2799,8 @@ function makeProjector(ROUND, HOST_P, HOME_EDGE_P, LIVE){
       const mxOppA=at(oGmix,r), mxOppB=at(oOg,r);                       // mixed: rank-matched opposing same- + opposite-gender (mixed-playing only)
       const mxOpp=(mxOppA!=null&&mxOppB!=null)?(mxOppA+mxOppB)/2:(mxOppA!=null?mxOppA:mxOppB);
       const oppPair=(mdOpp!=null&&mxOpp!=null)?((1-mx)*mdOpp+mx*mxOpp):(mdOpp!=null?mdOpp:(mxOpp!=null?mxOpp:teamDupr(info.o)));
-      if(oppPair!=null) share=0.5+Math.max(-0.13,Math.min(0.13,(myPair-oppPair)*0.12)); // pair edge → point-share margin
-    } else if(myD!=null){ const oppD=teamDupr(info.o); if(oppD!=null) share=0.5+Math.max(-0.13,Math.min(0.13,(myD-oppD)*0.07)); }
+      if(oppPair!=null) share=0.5+Math.max(-0.20,Math.min(0.20,(myPair-oppPair)*0.18)); // pair edge → point-share margin (0.18 coeff: partner/pair quality matters more)
+    } else if(myD!=null){ const oppD=teamDupr(info.o); if(oppD!=null) share=0.5+Math.max(-0.20,Math.min(0.20,(myD-oppD)*0.11)); }
     const mult=pSweep*1.5 + (1-pSweep);                                 // team result enters ONLY as the sweep bonus
     // Dreambreaker: a 2–2 match is decided by a POSITIONAL singles relay, scored on SINGLES skill. Only confirmed
     // DB players (DB_PLAYERS) play it, and they go in singles-DUPR order — a player at breaker position p faces the
@@ -2808,7 +2813,7 @@ function makeProjector(ROUND, HOST_P, HOME_EDGE_P, LIVE){
       const oppOrder=singlesSorted(info.o,g,false);                      // opponent's SAME-GENDER breakers, best-singles first
       const oppSng=oppOrder.length?oppOrder[Math.min(pos,oppOrder.length-1)].s:teamSingles(info.o); // the p-th of them (man vs man / woman vs woman)
       if(oppSng!=null){
-        const sngShare=0.5+Math.max(-0.13,Math.min(0.13,(mySng-oppSng)*0.12));
+        const sngShare=0.5+Math.max(-0.20,Math.min(0.20,(mySng-oppSng)*0.18));
         const fDB=Math.max(0,Math.min(0.5, pDB/(2*wt+pDB))) * _dbp;    // breaker's share of games, scaled by their chance of being the one who plays it
         share=(1-fDB)*share + fDB*sngShare;
       }
