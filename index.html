@@ -1999,6 +1999,8 @@ const PLAY_WEIGHT = {
   'Will Howells':0.45,
   // end-newport-lineups
 };
+// Commissioner lineup overrides for Newport (confirmed/expected lineups) — applied over the base + auto-derived weights.
+Object.assign(PLAY_WEIGHT, { 'Alix Truong':0.90, 'Brooke Buckner':0.95, 'Will Howells':0.82, 'Judit Castillo':0.12, 'Milan Rane':0.04, 'Hunter Johnson':0.15, 'Christopher Haworth':0.25, 'Tyson McGuffin':0.18 });
 // Confirmed dreambreaker (singles-relay) players — only these get the singles/DB share blend + P(play) floor,
 // since the relay is a team's DESIGNATED 4, not everyone. Harvested from picklekey.com team pages (Game-5
 // relays) for all 8 Round-1 teams. The relay is POSITIONAL & WITHIN-GENDER: a team's breakers go in singles-DUPR
@@ -2957,18 +2959,22 @@ function renderPlayoffs(){
     // Keepers: players on the logged-in user's LAST-ROUND playoff roster who are still alive (on a Newport club).
     // They can retain up to 8, so star them on the board as retain candidates.
     const myId=(typeof MYTEAM!=='undefined'&&MYTEAM)||(typeof MY_TEAM_ID!=='undefined'&&MY_TEAM_ID)||'B8';
-    const myPo=(P.teams||[]).find(t=>t.teamId===myId);
-    const keepers=new Set((myPo?myPo.players:[]).map(p=>norm(p.name)));
+    const FINALISTS=['B8','A3'];                       // Zack (Philly) vs Mark (Brightwood)
+    const rosterOf=id=>{ const t=(P.teams||[]).find(x=>x.teamId===id); return new Set((t?t.players:[]).map(p=>norm(p.name))); };
+    const mineSet=rosterOf(myId);
+    const oppId=FINALISTS.find(id=>id!==myId)||(myId==='B8'?'A3':'B8');
+    const oppSet=rosterOf(oppId);
+    const oppOwner=(((P.teams||[]).find(t=>t.teamId===oppId)||{}).owner)||'opponent';
     const rows2=[];
     for(const nm in PLAYERS){ const club=norm((PLAYERS[nm].mlp&&PLAYERS[nm].mlp.T9)||''); if(!R2set.has(club))continue;
       const pr=proj2(nm); if(pr.out)continue;
-      const dd=((DATA.dupr||{})[nm]||{}).d;
-      rows2.push({name:nm,club,clubN:NBCITY[club]||club,proj:+(+pr.pre).toFixed(1),gen:(DATA.gender||{})[nm]||'',dupr:dd,pPlay:+(+pr.pPlay).toFixed(2),keep:keepers.has(norm(nm))}); }
+      const dd=((DATA.dupr||{})[nm]||{}).d; const k=norm(nm);
+      rows2.push({name:nm,club,clubN:NBCITY[club]||club,proj:+(+pr.pre).toFixed(1),gen:(DATA.gender||{})[nm]||'',dupr:dd,pPlay:+(+pr.pPlay).toFixed(2),keep:mineSet.has(k),keepOpp:oppSet.has(k)}); }
     rows2.sort((a,b)=>b.proj-a.proj);
-    const nKeep=rows2.filter(r=>r.keep).length;
+    const nKeep=rows2.filter(r=>r.keep).length, nKeepOpp=rows2.filter(r=>r.keepOpp).length;
     const muCard=m=>`<div class="np-mu"><span class="np-t"><b>${esc(m.aName)}</b><small>#${m.aSeed}</small></span><span class="np-vs">vs</span><span class="np-t"><b>${esc(m.bName)}</b><small>#${m.bSeed}</small></span></div>`;
     const gTag=g=>g?`<span class="np-g ${g==='F'?'w':'m'}">${g}</span>`:'';
-    const trs=rows2.map((r,i)=>`<tr class="np-row${r.keep?' np-keep':''}" data-player="${esc(r.name)}" tabindex="0"><td class="np-rk">${i+1}</td><td class="np-nm">${r.keep?'<span class="np-star" title="On your last-round roster — retain candidate">★</span>':''}${esc(r.name)}${gTag(r.gen)}</td><td class="np-cl">${esc(r.clubN)}</td><td class="np-du">${r.dupr!=null?r.dupr.toFixed(2):'—'}</td><td class="np-pp">${r.pPlay<1?Math.round(r.pPlay*100)+'%':'✓'}</td><td class="np-pj"><b>${r.proj.toFixed(1)}</b></td></tr>`).join('');
+    const trs=rows2.map((r,i)=>`<tr class="np-row${r.keep?' np-keep':r.keepOpp?' np-keepopp':''}" data-player="${esc(r.name)}" tabindex="0"><td class="np-rk">${i+1}</td><td class="np-nm">${r.keep?'<span class="np-star" title="On your last-round roster — retain candidate">★</span>':r.keepOpp?`<span class="np-star opp" title="On ${esc(oppOwner)}&#39;s last-round roster">★</span>`:''}${esc(r.name)}${gTag(r.gen)}</td><td class="np-cl">${esc(r.clubN)}</td><td class="np-du">${r.dupr!=null?r.dupr.toFixed(2):'—'}</td><td class="np-pp">${r.pPlay<1?Math.round(r.pPlay*100)+'%':'✓'}</td><td class="np-pj"><b>${r.proj.toFixed(1)}</b></td></tr>`).join('');
     newportBoard=`<style>
       .np-board{border:1px solid var(--line2);border-radius:14px;padding:16px 16px 6px;margin-bottom:22px;background:linear-gradient(180deg,color-mix(in srgb,var(--optic) 6%,transparent),transparent 55%)}
       .np-eyebrow{font:600 11px var(--cond,inherit);letter-spacing:.1em;text-transform:uppercase;color:var(--optic-deep)}
@@ -2986,13 +2992,14 @@ function renderPlayoffs(){
       .np-scroll{max-height:520px;overflow-y:auto;border:1px solid var(--line);border-radius:10px}
       .np-row{cursor:pointer} .np-row:hover td{background:color-mix(in srgb,var(--optic) 9%,transparent)} .np-row:focus-visible{outline:2px solid var(--optic);outline-offset:-2px}
       .np-keep td{background:color-mix(in srgb,#ffd54a 9%,transparent)} .np-keep:hover td{background:color-mix(in srgb,#ffd54a 15%,transparent)}
-      .np-star{color:#ffd54a;margin-right:4px}
+      .np-keepopp td{background:color-mix(in srgb,#7cc4ff 8%,transparent)} .np-keepopp:hover td{background:color-mix(in srgb,#7cc4ff 14%,transparent)}
+      .np-star{color:#ffd54a;margin-right:4px} .np-star.opp{color:#7cc4ff}
       @media(max-width:560px){.np-mus{grid-template-columns:1fr}.np-cl{display:none}.np-tbl th.np-clh{display:none}}
     </style>
     <section class="np-board">
       <div class="np-eyebrow">Championship · Round 2</div>
       <div class="np-h">🏆 Newport Beach — Draft Board</div>
-      <div class="np-sub">You (Philly) vs Mark (Brightwood) for the title, scored off these 8 clubs at Newport. Draft from the ranked board — projections are the same point-share model as Round 1, at a neutral venue. <b>Team matchup drives it</b> (sweep-likely clubs rank highest); DUPR nudges within a team.${nKeep?` <span style="color:var(--faint)">·</span> <b style="color:#ffd54a">★</b> = on your last-round roster (${nKeep} still alive) — retain up to <b>8</b>.` : ''} <span style="color:var(--faint)">Tap any player for their card.</span></div>
+      <div class="np-sub">You (Philly) vs Mark (Brightwood) for the title, scored off these 8 clubs at Newport. Draft from the ranked board — projections are the same point-share model as Round 1, at a neutral venue. <b>Team matchup drives it</b> (sweep-likely clubs rank highest); DUPR nudges within a team.${(nKeep||nKeepOpp)?` <span style="color:var(--faint)">·</span> <b style="color:#ffd54a">★</b> your keepers${nKeep?` (${nKeep})`:''} <span style="color:var(--faint)">·</span> <b style="color:#7cc4ff">★</b> ${esc(oppOwner)}${"&#39;"}s keepers${nKeepOpp?` (${nKeepOpp})`:''} — each retains up to <b>8</b>.` : ''} <span style="color:var(--faint)">Tap any player for their card.</span></div>
       <div class="np-mus">${R2.map(muCard).join('')}</div>
       <div class="np-scroll"><table class="np-tbl"><thead><tr><th>#</th><th>Player</th><th class="np-clh">Club</th><th>DUPR</th><th>Play</th><th style="text-align:right">Proj</th></tr></thead><tbody>${trs}</tbody></table></div>
     </section>`;
