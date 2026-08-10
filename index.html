@@ -2001,6 +2001,8 @@ const PLAY_WEIGHT = {
 };
 // Commissioner lineup overrides for Newport (confirmed/expected lineups) — applied over the base + auto-derived weights.
 Object.assign(PLAY_WEIGHT, { 'Alix Truong':0.90, 'Brooke Buckner':0.95, 'Will Howells':0.82, 'Judit Castillo':0.12, 'Milan Rane':0.04, 'Hunter Johnson':0.15, 'Christopher Haworth':0.25, 'Tyson McGuffin':0.18 });
+// Direct P(play) overrides — confirmed availability, used as-is for the Play column and to scale the projection.
+const PLAY_PROB = { 'Alix Truong':0.95, 'Brooke Buckner':0.95, 'Will Howells':0.80, 'Noe Khlif':0.90 };
 // Confirmed dreambreaker (singles-relay) players — only these get the singles/DB share blend + P(play) floor,
 // since the relay is a team's DESIGNATED 4, not everyone. Harvested from picklekey.com team pages (Game-5
 // relays) for all 8 Round-1 teams. The relay is POSITIONAL & WITHIN-GENDER: a team's breakers go in singles-DUPR
@@ -2825,6 +2827,7 @@ function makeProjector(ROUND, HOST_P, HOME_EDGE_P, LIVE){
     // that 4th one — a genuine low-minutes sub. Exposure fades as playing time rises (Callie Smith at 0.83 is safe).
     if(mixedOnly){ const pThreeOh=w*w*w + (1-w)*(1-w)*(1-w); const expo=Math.max(0,Math.min(1,(0.75-wt)/0.35)); pDoub*=(1 - expo*0.5*pThreeOh); }
     let pPlay=1 - (1-pDoub)*(1 - pDB*_dbp);                             // play ≥1 game if doubles OR the breaker
+    if(typeof PLAY_PROB!=='undefined' && PLAY_PROB[name]!=null) pPlay=PLAY_PROB[name];   // direct P(play) override (confirmed availability)
     const perGame=11*share*mult;
     // LIVE hybrid: once a series has completed matches, blend each player's ACTUAL point-shares (banked) with the
     // projected remainder, and recompute the sweep given the current series score (a 2-0 sweep is only possible if
