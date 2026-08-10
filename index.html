@@ -2961,7 +2961,7 @@ function renderPlayoffs(){
   let newportBoard='';
   const R2=P.round2||[];
   if(R2.length){
-    const proj2=makeProjector(R2, null, 1, null);
+    const proj2=makeProjector(R2, 'losangeles', 1.03, null);   // Newport is LA's backyard → slight home edge for LA (and a slight relative disadvantage for their opponent, Dallas)
     const R2set=new Set(); R2.forEach(m=>{R2set.add(m.a);R2set.add(m.b);});
     const NBCITY={newjersey:'New Jersey',stlouis:'St. Louis',losangeles:'LA',columbus:'Columbus',palmbeach:'Palm Beach',texas:'Texas',dallas:'Dallas',brooklyn:'Brooklyn'};
     // Keepers: players on the logged-in user's LAST-ROUND playoff roster who are still alive (on a Newport club).
