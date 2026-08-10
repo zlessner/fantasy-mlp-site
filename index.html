@@ -2954,15 +2954,21 @@ function renderPlayoffs(){
     const proj2=makeProjector(R2, null, 1, null);
     const R2set=new Set(); R2.forEach(m=>{R2set.add(m.a);R2set.add(m.b);});
     const NBCITY={newjersey:'New Jersey',stlouis:'St. Louis',losangeles:'LA',columbus:'Columbus',palmbeach:'Palm Beach',texas:'Texas',dallas:'Dallas',brooklyn:'Brooklyn'};
+    // Keepers: players on the logged-in user's LAST-ROUND playoff roster who are still alive (on a Newport club).
+    // They can retain up to 8, so star them on the board as retain candidates.
+    const myId=(typeof MYTEAM!=='undefined'&&MYTEAM)||(typeof MY_TEAM_ID!=='undefined'&&MY_TEAM_ID)||'B8';
+    const myPo=(P.teams||[]).find(t=>t.teamId===myId);
+    const keepers=new Set((myPo?myPo.players:[]).map(p=>norm(p.name)));
     const rows2=[];
     for(const nm in PLAYERS){ const club=norm((PLAYERS[nm].mlp&&PLAYERS[nm].mlp.T9)||''); if(!R2set.has(club))continue;
       const pr=proj2(nm); if(pr.out)continue;
       const dd=((DATA.dupr||{})[nm]||{}).d;
-      rows2.push({name:nm,club,clubN:NBCITY[club]||club,proj:+(+pr.pre).toFixed(1),gen:(DATA.gender||{})[nm]||'',dupr:dd,pPlay:+(+pr.pPlay).toFixed(2)}); }
+      rows2.push({name:nm,club,clubN:NBCITY[club]||club,proj:+(+pr.pre).toFixed(1),gen:(DATA.gender||{})[nm]||'',dupr:dd,pPlay:+(+pr.pPlay).toFixed(2),keep:keepers.has(norm(nm))}); }
     rows2.sort((a,b)=>b.proj-a.proj);
+    const nKeep=rows2.filter(r=>r.keep).length;
     const muCard=m=>`<div class="np-mu"><span class="np-t"><b>${esc(m.aName)}</b><small>#${m.aSeed}</small></span><span class="np-vs">vs</span><span class="np-t"><b>${esc(m.bName)}</b><small>#${m.bSeed}</small></span></div>`;
     const gTag=g=>g?`<span class="np-g ${g==='F'?'w':'m'}">${g}</span>`:'';
-    const trs=rows2.map((r,i)=>`<tr><td class="np-rk">${i+1}</td><td class="np-nm">${esc(r.name)}${gTag(r.gen)}</td><td class="np-cl">${esc(r.clubN)}</td><td class="np-du">${r.dupr!=null?r.dupr.toFixed(2):'—'}</td><td class="np-pp">${r.pPlay<1?Math.round(r.pPlay*100)+'%':'✓'}</td><td class="np-pj"><b>${r.proj.toFixed(1)}</b></td></tr>`).join('');
+    const trs=rows2.map((r,i)=>`<tr class="np-row${r.keep?' np-keep':''}" data-player="${esc(r.name)}" tabindex="0"><td class="np-rk">${i+1}</td><td class="np-nm">${r.keep?'<span class="np-star" title="On your last-round roster — retain candidate">★</span>':''}${esc(r.name)}${gTag(r.gen)}</td><td class="np-cl">${esc(r.clubN)}</td><td class="np-du">${r.dupr!=null?r.dupr.toFixed(2):'—'}</td><td class="np-pp">${r.pPlay<1?Math.round(r.pPlay*100)+'%':'✓'}</td><td class="np-pj"><b>${r.proj.toFixed(1)}</b></td></tr>`).join('');
     newportBoard=`<style>
       .np-board{border:1px solid var(--line2);border-radius:14px;padding:16px 16px 6px;margin-bottom:22px;background:linear-gradient(180deg,color-mix(in srgb,var(--optic) 6%,transparent),transparent 55%)}
       .np-eyebrow{font:600 11px var(--cond,inherit);letter-spacing:.1em;text-transform:uppercase;color:var(--optic-deep)}
@@ -2978,12 +2984,15 @@ function renderPlayoffs(){
       .np-g{display:inline-block;font:700 9px var(--mono);padding:1px 4px;border-radius:4px;margin-left:6px;vertical-align:1px}
       .np-g.w{color:#ff9ecb;background:color-mix(in srgb,#ff9ecb 15%,transparent)} .np-g.m{color:#7cc4ff;background:color-mix(in srgb,#7cc4ff 15%,transparent)}
       .np-scroll{max-height:520px;overflow-y:auto;border:1px solid var(--line);border-radius:10px}
+      .np-row{cursor:pointer} .np-row:hover td{background:color-mix(in srgb,var(--optic) 9%,transparent)} .np-row:focus-visible{outline:2px solid var(--optic);outline-offset:-2px}
+      .np-keep td{background:color-mix(in srgb,#ffd54a 9%,transparent)} .np-keep:hover td{background:color-mix(in srgb,#ffd54a 15%,transparent)}
+      .np-star{color:#ffd54a;margin-right:4px}
       @media(max-width:560px){.np-mus{grid-template-columns:1fr}.np-cl{display:none}.np-tbl th.np-clh{display:none}}
     </style>
     <section class="np-board">
       <div class="np-eyebrow">Championship · Round 2</div>
       <div class="np-h">🏆 Newport Beach — Draft Board</div>
-      <div class="np-sub">You (Philly) vs Mark (Brightwood) for the title, scored off these 8 clubs at Newport. Draft from the ranked board — projections are the same point-share model as Round 1, at a neutral venue. <b>Team matchup drives it</b> (sweep-likely clubs rank highest); DUPR nudges within a team.</div>
+      <div class="np-sub">You (Philly) vs Mark (Brightwood) for the title, scored off these 8 clubs at Newport. Draft from the ranked board — projections are the same point-share model as Round 1, at a neutral venue. <b>Team matchup drives it</b> (sweep-likely clubs rank highest); DUPR nudges within a team.${nKeep?` <span style="color:var(--faint)">·</span> <b style="color:#ffd54a">★</b> = on your last-round roster (${nKeep} still alive) — retain up to <b>8</b>.` : ''} <span style="color:var(--faint)">Tap any player for their card.</span></div>
       <div class="np-mus">${R2.map(muCard).join('')}</div>
       <div class="np-scroll"><table class="np-tbl"><thead><tr><th>#</th><th>Player</th><th class="np-clh">Club</th><th>DUPR</th><th>Play</th><th style="text-align:right">Proj</th></tr></thead><tbody>${trs}</tbody></table></div>
     </section>`;
@@ -3001,6 +3010,7 @@ function renderPlayoffs(){
     </details>`;
   body.querySelectorAll('[data-poa]').forEach(b=>b.addEventListener('click',()=>openPlayoffMatchup(b.dataset.poa,b.dataset.pob,b.dataset.polabel)));
   body.querySelectorAll('.po-mlp-side[data-mlpteam]').forEach(b=>b.addEventListener('click',()=>openMlpTeam(b.dataset.mlpteam)));
+  body.querySelectorAll('.np-row[data-player]').forEach(b=>{ b.addEventListener('click',()=>openPlayer(b.dataset.player)); b.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); openPlayer(b.dataset.player); } }); });
   body.querySelectorAll('.po-mm[data-series]').forEach(b=>b.addEventListener('click',()=>openMlpMatch(b.dataset.series,+b.dataset.mi)));
 }
 let _poData=null;
