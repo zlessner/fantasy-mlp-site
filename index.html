@@ -3107,7 +3107,7 @@ function openChampMatchup(){
   const col=(t,win,pct)=>{ const roster=[...t.pr].sort((a,b)=>b.mean-a.mean);
     const rows=roster.map(p=>`<button class="prow" data-player="${esc(p.name)}"><span class="pn">${esc(p.name)}${sxTag(p.name)}<span class="pm">${esc(p.mlp||'')}${p.out?' · not at Newport':''}</span></span><span class="pp"${p.out?' style="color:var(--faint)"':''}>${p.out?'—':'≈'+p.mean.toFixed(1)}</span></button>`).join('');
     return `<div class="bsteam ${win?'win':''}"><div class="bshead">
-      <div class="bsmeta"><div class="nm">${esc(t.team)}</div><div class="ow">${esc(t.owner)} · ${t.players.length} players${t.preProj!=null?` · neutral ≈${t.preProj}`:''}</div></div>
+      <div class="bsmeta"><div class="nm">${esc(t.team)}</div><div class="ow">${esc(t.owner)} · ${t.players.length} players${(t.preProj!=null&&t.preProj!==t.proj)?` · pre-tourney ≈${t.preProj}`:''}</div></div>
       <div class="bsscore">≈${t.proj}${pct!=null?`<span class="wpill">${pct}%</span>`:''}</div></div>
       <div class="plist">${rows}</div></div>`; };
   modalEl.innerHTML=`<div class="mtop">${backBtn()}<div><div class="ml-eyebrow">Championship Final · Newport Beach</div>
