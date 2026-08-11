@@ -2842,7 +2842,10 @@ function makeProjector(ROUND, HOST_P, HOME_EDGE_P, LIVE){
     // opponent's p-th-best singles, not their team average. So Brooklyn's #2 breaker (Alshon, behind Haworth) draws
     // SoCal's #2 singles — a softer matchup. Blended by fDB = the breaker's share of this player's games.
     const mySng=(DUP[name]&&DUP[name].s), _dbp=dbP(name);
-    const pDB=6*w*w*(1-w)*(1-w);                                        // exact P(games split 2–2 → breaker); w as per-game proxy
+    const pDB=6*w*w*(1-w)*(1-w);                                        // P(ONE match's 4 games split 2–2 → breaker); w as per-game proxy
+    // A playoff series is best-of-3 MATCHES, so 2–3 are played (incl. a deciding 3rd), each an independent DB
+    // chance. P(≥1 dreambreaker anywhere in the series) — this is what a DB-only sub's court time depends on.
+    const pDBser=1-((w*w+(1-w)*(1-w))*Math.pow(1-pDB,2)+2*w*(1-w)*Math.pow(1-pDB,3));
     if(_dbp>0 && mySng!=null){
       const myOrder=singlesSorted(k,g,true); const pos=Math.max(0, myOrder.findIndex(x=>x.n===name)); // my slot among SAME-GENDER breakers
       const oppOrder=singlesSorted(info.o,g,false);                      // opponent's SAME-GENDER breakers, best-singles first
@@ -2866,7 +2869,7 @@ function makeProjector(ROUND, HOST_P, HOME_EDGE_P, LIVE){
     // always play an early game (their gender-doubles), and this only bites a player whose LONE doubles game is
     // that 4th one — a genuine low-minutes sub. Exposure fades as playing time rises (Callie Smith at 0.83 is safe).
     if(mixedOnly){ const pThreeOh=w*w*w + (1-w)*(1-w)*(1-w); const expo=Math.max(0,Math.min(1,(0.75-wt)/0.35)); pDoub*=(1 - expo*0.5*pThreeOh); }
-    let pPlay=1 - (1-pDoub)*(1 - pDB*_dbp);                             // play ≥1 game if doubles OR the breaker
+    let pPlay=1 - (1-pDoub)*(1 - pDBser*_dbp);                          // play ≥1 game if doubles OR ANY of the series' dreambreakers
     if(typeof PLAY_PROB!=='undefined' && PLAY_PROB[name]!=null) pPlay=PLAY_PROB[name];   // direct P(play) override (confirmed availability)
     const perGame=11*share*mult;
     // LIVE hybrid: once a series has completed matches, blend each player's ACTUAL point-shares (banked) with the
