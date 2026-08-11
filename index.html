@@ -2642,10 +2642,24 @@ function myTeamPlayoffHTML(teamId){
     const meC=_champData.teams.find(t=>t.teamId===teamId), oppC=_champData.teams.find(t=>t.teamId!==teamId);
     const wpC=_champData.matchWin(meC,oppC);
     const rowsC=[...meC.pr].sort((a,b)=>b.mean-a.mean).map(p=>`<button class="prow" data-player="${esc(p.name)}"><span class="pn">${esc(p.name)}${sxTag(p.name)}<span class="pm">${esc(p.mlp||'')}</span></span><span class="pp">≈${(p.mean||0).toFixed(1)}</span></button>`).join('');
+    // last round (semifinal) — a hidden/collapsible item; tapping the matchup opens the Round-1 rosters modal.
+    let semiHTML='';
+    if(_poData&&_poData.ts){ const me1=_poData.ts.find(x=>x.teamId===teamId&&x.proj);
+      if(me1){ const f=(c,s)=>_poData.ts.find(x=>x.conf===c&&x.dseed===s);
+        const semis=[[f('A',1),f('B',2)],[f('A',2),f('B',1)]];
+        const pair=semis.find(pr=>pr[0]&&pr[1]&&(pr[0].teamId===teamId||pr[1].teamId===teamId));
+        const opp1=pair?(pair[0].teamId===teamId?pair[1]:pair[0]):null;
+        if(opp1){ const wp1=_poData.matchWin(me1,opp1), won=wp1==null||wp1>=50;
+          semiHTML=`<details class="disc" style="margin:12px 0 0;background:transparent"><summary>Last round — Semifinal<span class="disc-m">${won?'won ✓':'lost'} · vs ${esc(opp1.owner)}</span></summary><div class="disc-body" style="padding:6px 2px 4px">
+            <button class="mt-po-mu" data-poa="${esc(me1.teamId)}" data-pob="${esc(opp1.teamId)}" data-polabel="Semifinal"><span class="mt-po-mul">Semifinal <span class="po-caret">›</span></span><span class="mt-po-opp">vs ${esc(opp1.team)} <small>(${esc(opp1.owner)})</small></span><span class="mt-po-win"><b>${wp1!=null?wp1+'%':'—'}</b> ${won?'won':'lost'}</span></button></div></details>`;
+        }
+      }
+    }
     return `<div class="mt-po"><button class="mt-champ" data-champ="1">
         <div class="mt-po-hd"><span class="ol-l">🏆 Championship Final · Newport Beach</span><span class="mt-po-proj">≈${meC.proj}<small> proj pts</small></span></div>
         <div class="mt-champ-mu"><span class="mt-champ-vs">vs <b>${esc(oppC.team)}</b> <small>(${esc(oppC.owner)})</small></span><span class="mt-champ-win"><b>${wpC!=null?wpC+'%':'—'}</b> to win <span class="po-caret">›</span></span></div></button>
-      <details class="disc" style="margin:12px 0 0;background:transparent"><summary>Championship roster<span class="disc-m">${meC.players.length} players · ≈pts</span></summary><div class="disc-body" style="padding:2px 2px 4px"><div class="plist">${rowsC}</div></div></details></div>`;
+      <details class="disc" style="margin:12px 0 0;background:transparent"><summary>Championship roster<span class="disc-m">${meC.players.length} players · ≈pts</span></summary><div class="disc-body" style="padding:2px 2px 4px"><div class="plist">${rowsC}</div></div></details>
+      ${semiHTML}</div>`;
   }
   if(!_poData||!_poData.ts) return '';
   const me=_poData.ts.find(x=>x.teamId===teamId && x.proj); if(!me) return '';
