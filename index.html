@@ -2010,7 +2010,7 @@ const PLAY_WEIGHT = {
   // end-newport-lineups
 };
 // Commissioner lineup overrides for Newport (confirmed/expected lineups) — applied over the base + auto-derived weights.
-Object.assign(PLAY_WEIGHT, { 'Alix Truong':0.90, 'Brooke Buckner':0.95, 'Will Howells':0.82, 'Judit Castillo':0.12, 'Milan Rane':0.04, 'Hunter Johnson':0.15, 'Christopher Haworth':0.25, 'Tyson McGuffin':0.18 });
+Object.assign(PLAY_WEIGHT, { 'Alix Truong':0.90, 'Brooke Buckner':0.95, 'Will Howells':0.82, 'Judit Castillo':0.12, 'Milan Rane':0.04, 'Hunter Johnson':0.05, 'Christopher Haworth':0.25, 'Tyson McGuffin':0.18 });
 // Direct P(play) overrides — confirmed availability, used as-is for the Play column and to scale the projection.
 const PLAY_PROB = { 'Alix Truong':0.95, 'Brooke Buckner':0.95, 'Will Howells':0.80, 'Noe Khlif':0.90 };
 // Gender-doubles partner uncertainty: with prob p, a player's WD partner is `alt` instead of their default
@@ -2031,7 +2031,8 @@ const DB_PLAYERS = new Set([
   'Gabriel Joseph','Roscoe Bellamy','Chao Yi Wang','Liz Truluck',                            // Las Vegas
   'John Lucian Goins','Zane Navratil','Ting Chieh Wei',                                       // Chicago (men + Ting Chieh Wei; 2nd DB-woman slot is split Elsie/Emma — see DB_PROB)
   'Nicolas Acevedo','Eric Oncins','Lea Jansen','Kaitlyn Christian',                          // Texas (Hewett excluded)
-  'Donald Young','Jaume Martinez Vich','Keilly Ulery','Mari Humberg']);                      // Atlanta
+  'Donald Young','Jaume Martinez Vich','Keilly Ulery','Mari Humberg',                        // Atlanta
+  'Connor Garnett','Hunter Johnson']);                                                        // bye-team breakers (user-confirmed): Garnett (LA, also might play mixed), Hunter Johnson (St. Louis, DB-only)
 // Uncertain breakers — a DB slot split between players. dbP() returns their chance of being the one who plays it
 // (1.0 for a confirmed DB_PLAYERS member, 0 for a non-breaker). Scales both the breaker P(play) contribution and
 // the singles/DB share credit. Chicago's 2nd DB-woman slot: 75% Elsie, 25% Emma (per commissioner).
