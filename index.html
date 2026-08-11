@@ -877,6 +877,11 @@ border-top:1px solid var(--line);margin-top:20px;
   .mt-po-pre b{color:var(--ink)}
   .mt-po-mu{display:flex;align-items:center;gap:10px;width:100%;appearance:none;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;color:inherit;font:inherit;cursor:pointer;text-align:left;transition:border-color .12s,background .12s}
   .mt-po-mu:hover{border-color:color-mix(in srgb,var(--optic) 45%,transparent);background:var(--bg3)}
+  .mt-champ{display:block;width:100%;appearance:none;background:transparent;border:0;padding:0;margin:0;color:inherit;font:inherit;cursor:pointer;text-align:left}
+  .mt-champ-mu{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;transition:border-color .12s,background .12s}
+  .mt-champ:hover .mt-champ-mu{border-color:color-mix(in srgb,var(--optic) 45%,transparent);background:var(--bg3)}
+  .mt-champ-vs{flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .mt-champ-vs small{color:var(--muted);font-weight:500}
+  .mt-champ-win{flex:none;font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap} .mt-champ-win b{color:var(--win);font-size:15px}
   .mt-po-mul{font-family:var(--cond);text-transform:uppercase;letter-spacing:.05em;font-size:11px;font-weight:700;color:var(--optic-deep);flex:none}
   .mt-po-opp{flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mt-po-opp small{color:var(--muted);font-weight:500}
@@ -2631,7 +2636,17 @@ function updateMyTeamNav(){ const btn=document.querySelector('.nav-btn[data-nav=
 // projected total, the semifinal opponent + win%, and the playoff roster with each player's live status.
 function myTeamPlayoffHTML(teamId){
   const P=DATA.playoffs; if(!P||!P.teams) return '';
-  if(typeof _poData==='undefined'||!_poData){ try{ renderPlayoffs(); }catch(e){} }
+  if((typeof _poData==='undefined'||!_poData)||!_champData){ try{ renderPlayoffs(); }catch(e){} }
+  // Championship finalists → their Round-2 (Newport) matchup as ONE clickable object.
+  if(_champData&&_champData.teams&&_champData.teams.some(t=>t.teamId===teamId)){
+    const meC=_champData.teams.find(t=>t.teamId===teamId), oppC=_champData.teams.find(t=>t.teamId!==teamId);
+    const wpC=_champData.matchWin(meC,oppC);
+    const rowsC=[...meC.pr].sort((a,b)=>b.mean-a.mean).map(p=>`<button class="prow" data-player="${esc(p.name)}"><span class="pn">${esc(p.name)}${sxTag(p.name)}<span class="pm">${esc(p.mlp||'')}</span></span><span class="pp">≈${(p.mean||0).toFixed(1)}</span></button>`).join('');
+    return `<div class="mt-po"><button class="mt-champ" data-champ="1">
+        <div class="mt-po-hd"><span class="ol-l">🏆 Championship Final · Newport Beach</span><span class="mt-po-proj">≈${meC.proj}<small> proj pts</small></span></div>
+        <div class="mt-champ-mu"><span class="mt-champ-vs">vs <b>${esc(oppC.team)}</b> <small>(${esc(oppC.owner)})</small></span><span class="mt-champ-win"><b>${wpC!=null?wpC+'%':'—'}</b> to win <span class="po-caret">›</span></span></div></button>
+      <details class="disc" style="margin:12px 0 0;background:transparent"><summary>Championship roster<span class="disc-m">${meC.players.length} players · ≈pts</span></summary><div class="disc-body" style="padding:2px 2px 4px"><div class="plist">${rowsC}</div></div></details></div>`;
+  }
   if(!_poData||!_poData.ts) return '';
   const me=_poData.ts.find(x=>x.teamId===teamId && x.proj); if(!me) return '';
   const f=(c,s)=>_poData.ts.find(x=>x.conf===c&&x.dseed===s);      // rebuild the bracket: (A1 vs B2), (A2 vs B1)
@@ -2668,6 +2683,7 @@ function renderMyTeam(){
   host.querySelectorAll('[data-player]').forEach(el=>el.addEventListener('click',()=>openPlayer(el.dataset.player, t.conf)));
   host.querySelectorAll('[data-mu-tour]').forEach(el=>el.addEventListener('click',()=>openMatch(el.dataset.muTour, el.dataset.muH, el.dataset.muA)));
   host.querySelectorAll('[data-poa]').forEach(el=>el.addEventListener('click',()=>openPlayoffMatchup(el.dataset.poa, el.dataset.pob, el.dataset.polabel)));
+  host.querySelectorAll('[data-champ]').forEach(el=>el.addEventListener('click',openChampMatchup));
   // draw/redraw the season chart bars — on first paint if open, and again whenever a section is expanded
   const drawBars=root=>root.querySelectorAll('.bar').forEach(b=>{ b.style.height=b.dataset.h+'%'; });
   requestAnimationFrame(()=>drawBars(host));
@@ -2990,12 +3006,12 @@ function renderPlayoffs(){
       champTeams.sort((a,b)=> a.teamId===myId?-1 : b.teamId===myId?1 : (a.teamId==='B8'?-1:1));
       const [CA,CB]=champTeams, cwp=matchWin(CA,CB);
       _champData={ teams:champTeams, matchWin };
-      const cbtn=(t,pct)=>`<button class="npc-team" data-champ="1"><span class="npc-nm">${esc(t.team)}<small>${esc(t.owner)} · ${t.players.length} players</small></span><span class="npc-sc"><b>${pct!=null?pct+'%':'—'}</b>≈${t.proj}</span></button>`;
+      const cside=(t,pct)=>`<span class="npc-team"><span class="npc-nm">${esc(t.team)}<small>${esc(t.owner)} · ${t.players.length} players</small></span><span class="npc-sc"><b>${pct!=null?pct+'%':'—'}</b>≈${t.proj}</span></span>`;
       const clead=cwp==null?'':(cwp>50?`${esc(CA.owner)} favored ${cwp}%`:cwp<50?`${esc(CB.owner)} favored ${100-cwp}%`:'dead even');
       champCard=`<section class="np-champ">
         <div class="np-eyebrow">🏆 Championship Final · Newport Beach</div>
-        <div class="npc-row">${cbtn(CA,cwp)}<span class="npc-vs">vs</span>${cbtn(CB,cwp!=null?100-cwp:null)}</div>
-        <div class="npc-hint">${clead?`<b>${clead}</b> · `:''}Tap either team for both rosters &amp; every player's projection.</div>
+        <button class="npc-card" data-champ="1">${cside(CA,cwp)}<span class="npc-vs">vs</span>${cside(CB,cwp!=null?100-cwp:null)}</button>
+        <div class="npc-hint">${clead?`<b>${clead}</b> · `:''}Tap for both rosters &amp; every player's projection.</div>
       </section>`;
     }
     const muCard=m=>`<div class="np-mu"><span class="np-t"><b>${esc(m.aName)}</b><small>#${m.aSeed}</small></span><span class="np-vs">vs</span><span class="np-t"><b>${esc(m.bName)}</b><small>#${m.bSeed}</small></span></div>`;
@@ -3021,9 +3037,9 @@ function renderPlayoffs(){
       .np-keepopp td{background:color-mix(in srgb,#7cc4ff 8%,transparent)} .np-keepopp:hover td{background:color-mix(in srgb,#7cc4ff 14%,transparent)}
       .np-star{color:#ffd54a;margin-right:4px} .np-star.opp{color:#7cc4ff}
       .np-champ{border:1px solid var(--optic);border-radius:14px;padding:14px 16px;margin-bottom:14px;background:linear-gradient(180deg,color-mix(in srgb,var(--optic) 12%,transparent),transparent 70%)}
-      .npc-row{display:flex;align-items:center;gap:10px;margin:8px 0 6px}
-      .npc-team{flex:1;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;text-align:left;appearance:none;border:1px solid var(--line2);background:var(--bg2);border-radius:10px;padding:10px 12px;color:inherit}
-      .npc-team:hover{border-color:var(--optic)}
+      .npc-card{display:flex;align-items:center;gap:10px;width:100%;margin:8px 0 6px;cursor:pointer;text-align:left;appearance:none;border:1px solid var(--line2);background:var(--bg2);border-radius:10px;padding:10px 14px;color:inherit}
+      .npc-card:hover{border-color:var(--optic)}
+      .npc-team{flex:1;display:flex;justify-content:space-between;align-items:center;gap:10px}
       .npc-nm{display:flex;flex-direction:column;font-weight:700;font-size:14px} .npc-nm small{font-weight:500;color:var(--faint);font-size:11px}
       .npc-sc{font-family:var(--mono);text-align:right;color:var(--muted)} .npc-sc b{display:block;font-size:18px;color:var(--optic-deep)}
       .npc-vs{color:var(--faint);font-size:11px} .npc-hint{color:var(--muted);font-size:12px}
@@ -3031,7 +3047,7 @@ function renderPlayoffs(){
       .po-lastround>summary{cursor:pointer;padding:12px 2px;font-weight:700;color:var(--muted);list-style:none} .po-lastround>summary::-webkit-details-marker{display:none}
       .po-lastround>summary::before{content:'▸ ';color:var(--faint)} .po-lastround[open]>summary::before{content:'▾ '}
       .po-lr-tag{font:600 9px var(--mono);color:var(--faint);border:1px solid var(--line2);border-radius:5px;padding:1px 5px;margin-left:6px;text-transform:uppercase}
-      @media(max-width:560px){.np-mus{grid-template-columns:1fr}.np-cl{display:none}.np-tbl th.np-clh{display:none}.npc-row{flex-direction:column}.npc-team{width:100%}}
+      @media(max-width:560px){.np-mus{grid-template-columns:1fr}.np-cl{display:none}.np-tbl th.np-clh{display:none}.npc-card{flex-direction:column;align-items:stretch}.npc-vs{text-align:center}}
     </style>
     ${champCard}
     <section class="np-board">
@@ -3059,7 +3075,7 @@ function renderPlayoffs(){
   body.querySelectorAll('[data-poa]').forEach(b=>b.addEventListener('click',()=>openPlayoffMatchup(b.dataset.poa,b.dataset.pob,b.dataset.polabel)));
   body.querySelectorAll('.po-mlp-side[data-mlpteam]').forEach(b=>b.addEventListener('click',()=>openMlpTeam(b.dataset.mlpteam)));
   body.querySelectorAll('.np-row[data-player]').forEach(b=>{ b.addEventListener('click',()=>openPlayer(b.dataset.player)); b.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); openPlayer(b.dataset.player); } }); });
-  body.querySelectorAll('.npc-team[data-champ]').forEach(b=>b.addEventListener('click',openChampMatchup));
+  body.querySelectorAll('[data-champ]').forEach(b=>b.addEventListener('click',openChampMatchup));
   body.querySelectorAll('.po-mm[data-series]').forEach(b=>b.addEventListener('click',()=>openMlpMatch(b.dataset.series,+b.dataset.mi)));
 }
 let _poData=null;
