@@ -2650,7 +2650,7 @@ function myTeamPlayoffHTML(teamId){
   if(_champData&&_champData.teams&&_champData.teams.some(t=>t.teamId===teamId)){
     const meC=_champData.teams.find(t=>t.teamId===teamId), oppC=_champData.teams.find(t=>t.teamId!==teamId);
     const wpC=_champData.matchWin(meC,oppC);
-    const rowsC=[...meC.pr].sort((a,b)=>b.mean-a.mean).map(p=>`<button class="prow" data-player="${esc(p.name)}"><span class="pn">${esc(p.name)}${sxTag(p.name)}<span class="pm">${esc(p.mlp||'')}</span></span><span class="pp">≈${(p.mean||0).toFixed(1)}</span></button>`).join('');
+    const rowsC=[...meC.pr].sort((a,b)=>b.mean-a.mean).map(p=>`<button class="prow" data-player="${esc(p.name)}"><span class="pn">${esc(p.name)}${sxTag(p.name)}${typeof pstat==='function'?pstat(p):''}<span class="pm">${esc(p.mlp||'')}</span></span><span class="pp">≈${(p.mean||0).toFixed(1)}</span></button>`).join('');
     // last round (semifinal) — a hidden/collapsible item; tapping the matchup opens the Round-1 rosters modal.
     let semiHTML='';
     if(_poData&&_poData.ts){ const me1=_poData.ts.find(x=>x.teamId===teamId&&x.proj);
@@ -3117,7 +3117,7 @@ function openChampMatchup(){
   const [A,B]=_champData.teams, wp=_champData.matchWin(A,B);
   pushNav({type:'champ'}); modalEl.className='modal wide';
   const col=(t,win,pct)=>{ const roster=[...t.pr].sort((a,b)=>b.mean-a.mean);
-    const rows=roster.map(p=>`<button class="prow" data-player="${esc(p.name)}"><span class="pn">${esc(p.name)}${sxTag(p.name)}<span class="pm">${esc(p.mlp||'')}${p.out?' · not at Newport':''}</span></span><span class="pp"${p.out?' style="color:var(--faint)"':''}>${p.out?'—':'≈'+p.mean.toFixed(1)}</span></button>`).join('');
+    const rows=roster.map(p=>`<button class="prow" data-player="${esc(p.name)}"><span class="pn">${esc(p.name)}${sxTag(p.name)}${typeof pstat==='function'?pstat(p):''}<span class="pm">${esc(p.mlp||'')}${p.out?' · not at Newport':''}${(p.banked!=null)?` · banked ${p.banked}`:''}</span></span><span class="pp"${p.out?' style="color:var(--faint)"':''}>${p.out?'—':'≈'+p.mean.toFixed(1)}</span></button>`).join('');
     return `<div class="bsteam ${win?'win':''}"><div class="bshead">
       <div class="bsmeta"><div class="nm">${esc(t.team)}</div><div class="ow">${esc(t.owner)} · ${t.players.length} players${(t.preProj!=null&&t.preProj!==t.proj)?` · pre-tourney ≈${t.preProj}`:''}</div></div>
       <div class="bsscore">≈${t.proj}${pct!=null?`<span class="wpill">${pct}%</span>`:''}</div></div>
@@ -3127,7 +3127,7 @@ function openChampMatchup(){
       <div class="ow">🔮 Projected — points-based scoring, every rostered player counts · slight LA home edge</div></div>
       <button class="mclose" id="mclose" aria-label="Close">✕</button></div>
     <div class="mbody"><div class="bs">${col(A,wp>=50,wp)}${col(B,wp<50,wp!=null?100-wp:null)}</div>
-      <div class="rnote">Each player's ≈ is their expected Newport points: <b>P(play) × game point-share × 11 × sweep multiplier</b>, with matchups decided by DUPR. A player scores their own games' point-share even if their club loses its series — the club result only enters as the <b>sweep</b> bonus (a 2-match sweep is ×1.5).</div></div>`;
+      <div class="rnote"><span class="statleg"><b>Live status:</b> <span class="pstat ns">not started</span> club’s series hasn’t begun · <span class="pstat ls">not yet in</span> club has played, they haven’t · <span class="pstat lp">played</span> played, series still going · <span class="pstat dp">played ✓</span> played, series finished · <span class="pstat ds">didn’t play</span> series over, never got in.</span><br>Each player's ≈ is their expected Newport points: <b>P(play) × game point-share × 11 × sweep multiplier</b>, with matchups decided by DUPR. A player scores their own games' point-share even if their club loses its series — the club result only enters as the <b>sweep</b> bonus (a 2-match sweep is ×1.5).</div></div>`;
   wireClose();
   modalEl.querySelectorAll('.prow[data-player]').forEach(el=>el.addEventListener('click',()=>openPlayer(el.dataset.player)));
   openOv();
