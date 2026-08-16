@@ -1568,9 +1568,9 @@ function openMlpTeam(key){
 // highlighted, and the dreambreaker broken out into its four singles segments. Players open their season.
 const MLP_CITY={palmbeach:'Palm Beach',chicago:'Chicago',texas:'Texas',atlanta:'Atlanta',dallas:'Dallas',lasvegas:'Las Vegas',brooklyn:'Brooklyn',socal:'SoCal'};
 function openMlpMatch(skey,mi){
-  const P=DATA.playoffs, L=P.live||{}; const sr=L.series&&L.series[skey]; if(!sr) return;
+  const P=DATA.playoffs; const inR1=((P.live||{}).series||{})[skey]; const sr=inR1||((P.round2live||{}).series||{})[skey]; if(!sr) return; const isR2=!inR1;
   const x=sr.matches[mi]; if(!x) return;
-  const m=(P.round1||[]).find(r=>[r.a,r.b].sort().join('~')===skey); if(!m) return;
+  const m=(isR2?(P.round2||[]):(P.round1||[])).find(r=>[r.a,r.b].sort().join('~')===skey); if(!m) return;
   const nmA=MLP_CITY[m.a]||m.aName, nmB=MLP_CITY[m.b]||m.bName, flip=x.t1&&x.t1!==m.a;
   const chips=arr=>(arr||[]).map(n=>`<button class="bx-p" data-player="${esc(n)}">${esc(n)}${sxTag(n)}</button>`).join('');
   let d=0;
@@ -1588,7 +1588,7 @@ function openMlpMatch(skey,mi){
     return `<div class="bx-game"><div class="bx-side${aWon?' w':''}">${chips(flip?g.p2:g.p1)}</div><div class="bx-mid"><span class="bx-glab">${lab}</span><span class="bx-sc"><b class="${aWon?'hi':''}">${aS}</b>–<b class="${!aWon?'hi':''}">${bS}</b></span></div><div class="bx-side r${!aWon?' w':''}">${chips(flip?g.p1:g.p2)}</div></div>`;
   }).join('');
   pushNav({type:'mlpmatch',skey,mi}); modalEl.className='modal wide';
-  modalEl.innerHTML=`<div class="mtop">${backBtn()}<div><div class="ml-eyebrow">MLP Round 1 · Dallas</div>
+  modalEl.innerHTML=`<div class="mtop">${backBtn()}<div><div class="ml-eyebrow">${isR2?'MLP Championship · Newport Beach':'MLP Round 1 · Dallas'}</div>
       <div class="nm" id="m-name" style="font-size:20px">${esc(nmA)} ${x.gf}–${x.ga} ${esc(nmB)}</div>
       <div class="ow">Match ${mi+1} · ${esc(MLP_CITY[x.winner]||x.winner)} win${x.db?' · dreambreaker':''}</div></div>
       <button class="mclose" id="mclose" aria-label="Close">✕</button></div>
@@ -2997,6 +2997,30 @@ function renderPlayoffs(){
     const mus=r1.map(m=>`<div class="po-mlp-mu"><div class="po-mlp-top">${side(m.a,m.aName,m.aSeed,false)}<span class="po-mlp-vs">vs</span>${side(m.b,m.bName,m.bSeed,true)}</div>${result(m)}</div>`).join('');
     return `<div class="po-mlpmatch"><div class="po-mlpmh"><h3>MLP Round 1 · Dallas</h3><span class="po-sub">The real club series these projections run over — seeds 5–12 (the top 4 seeds have a bye). Tap a team for its season.</span></div><div class="po-mlp-grid">${mus}</div></div>`;
   })();
+  // ---- Newport Beach (Round 2) LIVE club series — box scores + dreambreakers, like the Dallas section ----
+  const newportSeries=(()=>{
+    const r2=(P.round2||[]).slice().sort((a,b)=>a.aSeed-b.aSeed); const L=P.round2live||{};
+    if(!r2.length || !L.series || !Object.keys(L.series).length) return '';
+    const R=DATA.teamRecord||{};
+    const CITY={newjersey:'New Jersey',stlouis:'St. Louis',losangeles:'LA',columbus:'Columbus',palmbeach:'Palm Beach',texas:'Texas',dallas:'Dallas',brooklyn:'Brooklyn'};
+    const side=(key,nm,seed,right)=>{ const rc=R[key]; const meta=rc?`${rc.w}–${rc.l}`:'';
+      return `<button class="po-mlp-side${right?' r':''}" data-mlpteam="${esc(key)}" aria-label="${esc(nm)} season"><span class="po-mseed">#${seed} seed</span><span class="po-mnm2">${esc(nm)}</span>${meta?`<span class="po-mrec">${esc(meta)}</span>`:''}</button>`; };
+    const result=(m)=>{ const skey=[m.a,m.b].sort().join('~'); const sr=L.series&&L.series[skey];
+      if(!sr||!sr.matches||!sr.matches.length) return '';
+      const nmOf=k=>CITY[k]||k;
+      const aw=sr.matches.filter(x=>x.winner===m.a).length, bw=sr.matches.filter(x=>x.winner===m.b).length;
+      const done=aw>=2||bw>=2, hi=Math.max(aw,bw), lo=Math.min(aw,bw), ldr=aw>=bw?m.a:m.b;
+      const lead=aw===bw?`Series tied ${aw}–${bw}`:`${nmOf(ldr)} ${done?'wins':'leads'} ${hi}–${lo}`;
+      const matchHTML=sr.matches.map((x,i)=>{ const flip=x.t1&&x.t1!==m.a; let d=0;
+        const gl=(x.games||[]).map(g=>{ const a=flip?g.s2:g.s1, b=flip?g.s1:g.s2;
+          const lab=g.db?'DB':(['WD','MD','MX','MX'][d++]||'G');
+          const av=a>b?`<b>${a}</b>`:a, bv=b>a?`<b>${b}</b>`:b;
+          return `<span class="po-g"><span class="po-gl">${lab}</span> ${av}–${bv}</span>`; }).join('');
+        return `<button class="po-mm" data-series="${esc(skey)}" data-mi="${i}"><span class="po-mm-h">M${i+1} · ${esc(nmOf(x.winner))} ${x.gf}–${x.ga}${x.db?' <span class="po-db">DB</span>':''} <span class="po-mm-tap">box score ›</span></span><span class="po-mm-g">${gl}</span></button>`; }).join('');
+      return `<div class="po-mlp-result"><span class="po-mlead${aw===bw?' tied':''}">${esc(lead)}</span>${matchHTML}</div>`; };
+    const mus=r2.map(m=>`<div class="po-mlp-mu"><div class="po-mlp-top">${side(m.a,m.aName,m.aSeed,false)}<span class="po-mlp-vs">vs</span>${side(m.b,m.bName,m.bSeed,true)}</div>${result(m)}</div>`).join('');
+    return `<div class="po-mlpmatch"><div class="po-mlpmh"><h3>MLP Championship · Newport Beach — live</h3><span class="po-sub">The real club series your championship is scored from. Tap a match for the full box score (incl. the dreambreaker relay), or a team for its season.</span></div><div class="po-mlp-grid">${mus}</div></div>`;
+  })();
   // ---- Newport Beach (Round 2) championship draft board ----------------------------------------
   // Pre-draft tool: every available player on the 8 Newport clubs, ranked by projected points (neutral venue,
   // no home edge). Same point-share engine as Round 1, pointed at P.round2 via makeProjector.
@@ -3086,6 +3110,7 @@ function renderPlayoffs(){
   }
   const draftDone=(P.picksMade||0)>=48;
   body.innerHTML=`${newportBoard}
+    ${newportSeries}
     <details class="po-lastround"><summary>Last round — Fantasy semifinals + MLP Round 1 (Dallas)<span class="po-lr-tag">completed</span></summary>
     ${bracket}
     <p class="po-note po-projnote">🔮 Win % and ≈points are a Monte-Carlo estimate over MLP Round 1 (Dallas). Tap a semifinal for both rosters and every player's projection.${draftDone?'':` Draft in progress (${P.picksMade}/48) — these shift as picks land.`}</p>
