@@ -2235,16 +2235,24 @@ function playerStats(name){
 // status, banked points, the games they actually played, and their round projection. '' when their MLP team
 // isn't in Round 1 (top-4 seeds have a bye), so it only appears when relevant.
 function poPlayerCard(name, mlpName){
-  const P=DATA.playoffs; if(!P||!P.round1||!P.round1.length) return '';
+  const P=DATA.playoffs; if(!P) return '';
   const nm=norm(mlpName||''); if(!nm) return '';
   const inTeam=r=>norm(r).includes(nm)||nm.includes(norm(r));
-  const m=P.round1.find(r=>inTeam(r.aName)||inTeam(r.bName)); if(!m) return '';
-  const mine=inTeam(m.aName)?m.a:m.b, opp=mine===m.a?m.b:m.a;
+  // Prefer the LIVE championship (Round 2 / Newport) when it's underway; else the Round-1 (Dallas) card.
+  let m=null, L=P.live||{}, isR2=false, roundLbl='MLP Round 1';
+  if(P.round2 && P.round2live && P.round2live.series && Object.keys(P.round2live.series).length){
+    m=(P.round2||[]).find(r=>r.a===nm||r.b===nm||inTeam(r.aName)||inTeam(r.bName));
+    if(m){ L=P.round2live; isR2=true; roundLbl='Championship · Newport Beach'; }
+  }
+  if(!m){ m=(P.round1||[]).find(r=>r.a===nm||r.b===nm||inTeam(r.aName)||inTeam(r.bName)); }
+  if(!m) return '';
+  const mine=(m.a===nm||inTeam(m.aName))?m.a:m.b, opp=mine===m.a?m.b:m.a;
   const mineName=mine===m.a?m.aName:m.bName, oppName=mine===m.a?m.bName:m.aName;
   const mineSeed=mine===m.a?m.aSeed:m.bSeed, oppSeed=mine===m.a?m.bSeed:m.aSeed;
-  const L=P.live||{}, skey=[m.a,m.b].sort().join('~'), sr=L.series&&L.series[skey], st=L.team&&L.team[mine], banked=L.player&&L.player[name];
-  if(typeof _poData==='undefined'||!_poData){ try{ renderPlayoffs(); }catch(e){} }
-  let pr=null,owner=null; if(typeof _poData!=='undefined'&&_poData&&_poData.ts){ for(const t of _poData.ts){ const f=(t.pr||[]).find(p=>norm(p.name)===norm(name)); if(f){pr=f;owner=t.owner;break;} } }
+  const skey=[m.a,m.b].sort().join('~'), sr=L.series&&L.series[skey], st=L.team&&L.team[mine], banked=L.player&&L.player[name];
+  if((typeof _poData==='undefined'||!_poData)||(isR2&&!_champData)){ try{ renderPlayoffs(); }catch(e){} }
+  let pr=null,owner=null; const src=isR2?((typeof _champData!=='undefined'&&_champData&&_champData.teams)||[]):((typeof _poData!=='undefined'&&_poData&&_poData.ts)||[]);
+  for(const t of src){ const f=(t.pr||[]).find(p=>norm(p.name)===norm(name)); if(f){pr=f;owner=t.owner;break;} }
   const done=st&&(st.myWins>=2||st.oppWins>=2);
   let statLab='team not started',statCls='ns';
   if(st){ if(banked){ statLab=done?'played ✓':'played'; statCls=done?'dp':'lp'; } else { statLab=done?'didn’t play':'not yet in'; statCls=done?'ds':'ls'; } }
@@ -2277,7 +2285,7 @@ function poPlayerCard(name, mlpName){
   if(st && pr && !pr.out && pr.pre!=null) parts.push(`was ≈${(+pr.pre).toFixed(1)} pre-tourney`);
   if(owner) parts.push(esc(owner)+'’s pick');
   const statLine=parts.length?`<div class="po-pc-stat">${parts.join(' · ')}</div>`:'';
-  return `<div class="po-pc"><div class="po-pc-hd"><span class="ol-l">Fantasy Playoffs · MLP Round 1</span><span class="pstat ${statCls}">${statLab}</span></div>
+  return `<div class="po-pc"><div class="po-pc-hd"><span class="ol-l">Fantasy Playoffs · ${roundLbl}</span><span class="pstat ${statCls}">${statLab}</span></div>
     ${seriesEl}${statLine}${gamesHTML}</div>`;
 }
 function openPlayer(name, division){
@@ -2896,7 +2904,7 @@ function makeProjector(ROUND, HOST_P, HOME_EDGE_P, LIVE){
       // liveFrac = fraction of this projection still UNPLAYED (drives the correlated-sim variance): 0 once the series
       // is decided (fully banked → no uncertainty), Erem/Etot for a player mid-series, 1 for a sat player (all future).
       const liveFrac = over?0:(pa?Erem/Etot:1);
-      return {mean:+(pL*11*bShare*mL).toFixed(2), pre:+(pPlay*perGame).toFixed(2), pPlay:+pL.toFixed(2), w, share:+bShare.toFixed(3), seed:info.seed, sweepP:+pSw.toFixed(2), out:false, mlp, mlpKey:k, oppKey:info.o, liveFrac:+liveFrac.toFixed(3), live:true, status, banked:pa?+(pa.sum/pa.games*11).toFixed(2):null};
+      return {mean:+(pL*11*bShare*mL).toFixed(2), pre:+(pPlay*perGame).toFixed(2), pPlay:+pL.toFixed(2), w, share:+bShare.toFixed(3), seed:info.seed, sweepP:+pSw.toFixed(2), out:false, mlp, mlpKey:k, oppKey:info.o, liveFrac:+liveFrac.toFixed(3), live:true, status, banked:pa?+(pa.sum/pa.games*11*(over?mL:1)).toFixed(2):null};   // once the series is settled the sweep bonus is locked → include it
     }
     return {mean:pPlay*perGame, pre:+(pPlay*perGame).toFixed(2), pPlay, w, share:+share.toFixed(3), seed:info.seed, sweepP:+pSweep.toFixed(2), out:false, mlp, mlpKey:k, oppKey:info.o, liveFrac:1, status:'ns'};
   }
