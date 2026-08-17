@@ -2846,8 +2846,8 @@ function makeProjector(ROUND, HOST_P, HOME_EDGE_P, LIVE){
       const mxOppA=at(oGmix,r), mxOppB=at(oOg,r);                       // mixed: rank-matched opposing same- + opposite-gender (mixed-playing only)
       const mxOpp=(mxOppA!=null&&mxOppB!=null)?(mxOppA+mxOppB)/2:(mxOppA!=null?mxOppA:mxOppB);
       const oppPair=(mdOpp!=null&&mxOpp!=null)?((1-mx)*mdOpp+mx*mxOpp):(mdOpp!=null?mdOpp:(mxOpp!=null?mxOpp:teamDupr(info.o)));
-      if(oppPair!=null) share=0.5+Math.max(-0.20,Math.min(0.20,(myPair-oppPair)*0.18)); // pair edge → point-share margin (0.18 coeff: partner/pair quality matters more)
-    } else if(myD!=null){ const oppD=teamDupr(info.o); if(oppD!=null) share=0.5+Math.max(-0.20,Math.min(0.20,(myD-oppD)*0.11)); }
+      if(oppPair!=null) share=0.5+Math.max(-0.25,Math.min(0.25,(myPair-oppPair)*0.18)); // pair edge → point-share margin (0.18 coeff: partner/pair quality matters more)
+    } else if(myD!=null){ const oppD=teamDupr(info.o); if(oppD!=null) share=0.5+Math.max(-0.25,Math.min(0.25,(myD-oppD)*0.11)); }
     const mult=pSweep*1.5 + (1-pSweep);                                 // team result enters ONLY as the sweep bonus
     // Dreambreaker: a 2–2 match is decided by a POSITIONAL singles relay, scored on SINGLES skill. Only confirmed
     // DB players (DB_PLAYERS) play it, and they go in singles-DUPR order — a player at breaker position p faces the
@@ -2863,7 +2863,7 @@ function makeProjector(ROUND, HOST_P, HOME_EDGE_P, LIVE){
       const oppOrder=singlesSorted(info.o,g,false);                      // opponent's SAME-GENDER breakers, best-singles first
       const oppSng=oppOrder.length?oppOrder[Math.min(pos,oppOrder.length-1)].s:teamSingles(info.o); // the p-th of them (man vs man / woman vs woman)
       if(oppSng!=null){
-        const sngShare=0.5+Math.max(-0.20,Math.min(0.20,(mySng-oppSng)*0.18));
+        const sngShare=0.5+Math.max(-0.25,Math.min(0.25,(mySng-oppSng)*0.18));
         const fDB=Math.max(0,Math.min(0.5, pDB/(2*wt+pDB))) * _dbp;    // breaker's share of games, scaled by their chance of being the one who plays it
         share=(1-fDB)*share + fDB*sngShare;
       }
